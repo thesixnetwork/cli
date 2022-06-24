@@ -20,15 +20,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite-hq/cli/ignite/chainconfig"
-	"github.com/ignite-hq/cli/ignite/pkg/availableport"
-	"github.com/ignite-hq/cli/ignite/pkg/cmdrunner"
-	"github.com/ignite-hq/cli/ignite/pkg/cmdrunner/step"
-	"github.com/ignite-hq/cli/ignite/pkg/cosmosfaucet"
-	"github.com/ignite-hq/cli/ignite/pkg/gocmd"
-	"github.com/ignite-hq/cli/ignite/pkg/httpstatuschecker"
-	"github.com/ignite-hq/cli/ignite/pkg/xexec"
-	"github.com/ignite-hq/cli/ignite/pkg/xurl"
+	"github.com/ignite/cli/ignite/chainconfig"
+	"github.com/ignite/cli/ignite/pkg/availableport"
+	"github.com/ignite/cli/ignite/pkg/cmdrunner"
+	"github.com/ignite/cli/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/ignite/pkg/cosmosfaucet"
+	"github.com/ignite/cli/ignite/pkg/gocmd"
+	"github.com/ignite/cli/ignite/pkg/httpstatuschecker"
+	"github.com/ignite/cli/ignite/pkg/xexec"
+	"github.com/ignite/cli/ignite/pkg/xurl"
 )
 
 const (
@@ -120,8 +120,8 @@ func ExecRetry() ExecOption {
 }
 
 type clientOptions struct {
-	env                        map[string]string
-	pattern, rootDir, testfile string
+	env                    map[string]string
+	testName, testFilePath string
 }
 
 // ClientOption defines options for the TS client test runner.
@@ -136,24 +136,17 @@ func ClientEnv(env map[string]string) ClientOption {
 	}
 }
 
-// ClientTestName option defines a pattern to match the test(s) that should be run.
+// ClientTestName option defines a pattern to match the test names that should be run.
 func ClientTestName(pattern string) ClientOption {
 	return func(o *clientOptions) {
-		o.pattern = pattern
+		o.testName = pattern
 	}
 }
 
-// ClientTestDir option defines a root directory where to look for tests and test files.
-func ClientTestDir(dir string) ClientOption {
+// ClientTestFile option defines the name of the file where to look for tests.
+func ClientTestFile(filePath string) ClientOption {
 	return func(o *clientOptions) {
-		o.rootDir = dir
-	}
-}
-
-// ClientTestFile option defines a file to look for tests.
-func ClientTestFile(filename string) ClientOption {
-	return func(o *clientOptions) {
-		o.testfile = filename
+		o.testFilePath = filePath
 	}
 }
 
@@ -227,7 +220,7 @@ func (e Env) Scaffold(name string, flags ...string) (appPath string) {
 
 	appDir := path.Base(name)
 
-	// Cleanup the home directory of the app
+	// Cleanup the home directory and cache of the app
 	e.t.Cleanup(func() {
 		os.RemoveAll(filepath.Join(e.Home(), fmt.Sprintf(".%s", appDir)))
 	})
@@ -449,7 +442,9 @@ func (e Env) RunClientTests(path string, options ...ClientOption) bool {
 	npm, err := exec.LookPath("npm")
 	require.NoError(e.t, err, "npm binary not found")
 
-	cwd, err := os.Getwd()
+	// The root dir for the tests must be an absolute path.
+	// It is used as the start search point to find test files.
+	rootDir, err := os.Getwd()
 	require.NoError(e.t, err)
 
 	// The filename of this module is required to be able to define the location
@@ -461,7 +456,6 @@ func (e Env) RunClientTests(path string, options ...ClientOption) bool {
 	}
 
 	opts := clientOptions{
-		rootDir: "",
 		env: map[string]string{
 			"TEST_CHAIN_PATH": path,
 		},
@@ -497,16 +491,13 @@ func (e Env) RunClientTests(path string, options ...ClientOption) bool {
 
 	output.Reset()
 
-	// The root dir for the tests must be an absolute path
-	absRootDir := filepath.Join(cwd, opts.rootDir)
-
-	args := []string{"run", "test", "--", "--dir", absRootDir}
-	if opts.pattern != "" {
-		args = append(args, "-t", opts.pattern)
+	args := []string{"run", "test", "--", "--dir", rootDir}
+	if opts.testName != "" {
+		args = append(args, "-t", opts.testName)
 	}
 
-	if opts.testfile != "" {
-		args = append(args, opts.testfile)
+	if opts.testFilePath != "" {
+		args = append(args, opts.testFilePath)
 	}
 
 	for k, v := range opts.env {
