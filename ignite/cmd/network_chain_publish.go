@@ -22,11 +22,11 @@ const (
 	flagHash         = "hash"
 	flagGenesis      = "genesis"
 	flagCampaign     = "campaign"
-	flagShares       = "shares"
 	flagNoCheck      = "no-check"
 	flagChainID      = "chain-id"
 	flagMainnet      = "mainnet"
 	flagRewardCoins  = "reward.coins"
+	flagRewardShares = "reward.shares"
 	flagRewardHeight = "reward.height"
 )
 
@@ -49,9 +49,9 @@ func NewNetworkChainPublish() *cobra.Command {
 	c.Flags().Bool(flagNoCheck, false, "Skip verifying chain's integrity")
 	c.Flags().String(flagCampaignMetadata, "", "Add a campaign metadata")
 	c.Flags().String(flagCampaignTotalSupply, "", "Add a total of the mainnet of a campaign")
-	c.Flags().String(flagShares, "", "Add shares for the campaign")
 	c.Flags().Bool(flagMainnet, false, "Initialize a mainnet campaign")
 	c.Flags().String(flagRewardCoins, "", "Reward coins")
+	c.Flags().String(flagRewardShares, "", "Add shares from the campaign as reward")
 	c.Flags().Int64(flagRewardHeight, 0, "Last reward height")
 	c.Flags().String(flagAmount, "", "Amount of coins for account request")
 	c.Flags().AddFlagSet(flagNetworkFrom())
@@ -77,9 +77,9 @@ func networkChainPublishHandler(cmd *cobra.Command, args []string) error {
 		noCheck, _                = cmd.Flags().GetBool(flagNoCheck)
 		campaignMetadata, _       = cmd.Flags().GetString(flagCampaignMetadata)
 		campaignTotalSupplyStr, _ = cmd.Flags().GetString(flagCampaignTotalSupply)
-		sharesStr, _              = cmd.Flags().GetString(flagShares)
 		isMainnet, _              = cmd.Flags().GetBool(flagMainnet)
 		rewardCoinsStr, _         = cmd.Flags().GetString(flagRewardCoins)
+		sharesStr, _              = cmd.Flags().GetString(flagRewardShares)
 		rewardDuration, _         = cmd.Flags().GetInt64(flagRewardHeight)
 		amount, _                 = cmd.Flags().GetString(flagAmount)
 	)
