@@ -15,8 +15,8 @@ import (
 func TestCosmosGen(t *testing.T) {
 	var (
 		env          = envtest.New(t)
-		path         = env.Scaffold("github.com/test/blog")
-		dirGenerated = filepath.Join(path, "vue/src/store/generated")
+		app          = env.Scaffold("github.com/test/blog")
+		dirGenerated = filepath.Join(app.SourcePath(), "vue/src/store/generated")
 	)
 
 	const (
@@ -33,7 +33,7 @@ func TestCosmosGen(t *testing.T) {
 				"--yes",
 				withMsgModuleName,
 			),
-			step.Workdir(path),
+			step.Workdir(app.SourcePath()),
 		)),
 	))
 
@@ -50,7 +50,7 @@ func TestCosmosGen(t *testing.T) {
 				"--module",
 				withMsgModuleName,
 			),
-			step.Workdir(path),
+			step.Workdir(app.SourcePath()),
 		)),
 	))
 
@@ -63,7 +63,7 @@ func TestCosmosGen(t *testing.T) {
 				"--yes",
 				withoutMsgModuleName,
 			),
-			step.Workdir(path),
+			step.Workdir(app.SourcePath()),
 		)),
 	))
 
@@ -79,7 +79,7 @@ func TestCosmosGen(t *testing.T) {
 				"--module",
 				withoutMsgModuleName,
 			),
-			step.Workdir(path),
+			step.Workdir(app.SourcePath()),
 		)),
 	))
 
@@ -95,7 +95,7 @@ func TestCosmosGen(t *testing.T) {
 				"--module",
 				withoutMsgModuleName,
 			),
-			step.Workdir(path),
+			step.Workdir(app.SourcePath()),
 		)),
 	))
 
@@ -110,7 +110,7 @@ func TestCosmosGen(t *testing.T) {
 				"--yes",
 				"--proto-all-modules",
 			),
-			step.Workdir(path),
+			step.Workdir(app.SourcePath()),
 		)),
 	))
 
@@ -124,7 +124,10 @@ func TestCosmosGen(t *testing.T) {
 		"cosmos.evidence.v1beta1",
 		"cosmos.feegrant.v1beta1",
 		"cosmos.gov.v1beta1",
+		"cosmos.gov.v1",
+		"cosmos.group.v1",
 		"cosmos.mint.v1beta1",
+		"cosmos.nft.v1beta1",
 		"cosmos.params.v1beta1",
 		"cosmos.slashing.v1beta1",
 		"cosmos.staking.v1beta1",
