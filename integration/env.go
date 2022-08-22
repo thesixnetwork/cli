@@ -17,7 +17,6 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 
 	"github.com/ignite/cli/ignite/chainconfig"
 	"github.com/ignite/cli/ignite/pkg/cmdrunner"
@@ -147,29 +146,6 @@ func (e Env) Home() string {
 	return home
 }
 
-// UpdateConfig updates config.yml file values.
-func (e Env) UpdateConfig(path, configFile string, update ConfigUpdateFunc) {
-	if configFile == "" {
-		configFile = ConfigYML
-	}
-
-	f, err := os.OpenFile(filepath.Join(path, configFile), os.O_RDWR|os.O_CREATE, 0o755)
-	require.NoError(e.t, err)
-
-	defer f.Close()
-
-	var cfg chainconfig.Config
-
-	require.NoError(e.t, yaml.NewDecoder(f).Decode(&cfg))
-	require.NoError(e.t, update(&cfg))
-	require.NoError(e.t, f.Truncate(0))
-
-	_, err = f.Seek(0, 0)
-
-	require.NoError(e.t, err)
-	require.NoError(e.t, yaml.NewEncoder(f).Encode(cfg))
-}
-
 // AppHome returns app's root home/data dir path.
 func (e Env) AppHome(name string) string {
 	return filepath.Join(e.Home(), fmt.Sprintf(".%s", name))
@@ -244,6 +220,7 @@ func (e Env) RunClientTests(path string, options ...ClientOption) bool {
 
 	// The tests are run from the TS client test runner package directory
 	runnerDir := filepath.Join(filepath.Dir(filename), "testdata/tstestrunner")
+	fmt.Println("ENV", env)
 
 	// TODO: Ignore stderr ? Errors are already displayed with traceback in the stdout
 	return e.Exec("run client tests", step.NewSteps(
