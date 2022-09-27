@@ -932,6 +932,7 @@ ignite generate ts-client [flags]
 
 ```
   -h, --help                help for ts-client
+  -o, --output string       typescript client output path (default "ts-client")
       --proto-all-modules   enables proto code generation for 3rd party modules used in your chain
   -y, --yes                 Answers interactive yes/no questions with yes
 ```
