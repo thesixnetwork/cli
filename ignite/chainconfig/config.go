@@ -96,6 +96,7 @@ type Validator struct {
 type Build struct {
 	Main    string   `yaml:"main"`
 	Binary  string   `yaml:"binary"`
+	Tags    []string `yaml:"tags"`
 	LDFlags []string `yaml:"ldflags"`
 	Proto   Proto    `yaml:"proto"`
 }

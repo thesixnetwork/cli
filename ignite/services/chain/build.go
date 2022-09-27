@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/docker/docker/pkg/archive"
 	"github.com/pkg/errors"
@@ -201,6 +202,7 @@ func (c *Chain) preBuild(ctx context.Context, cacheStorage cache.Storage) (build
 	)
 	buildFlags = []string{
 		gocmd.FlagMod, gocmd.FlagModValueReadOnly,
+		gocmd.FlagTags, strings.Join(config.Build.Tags, ","),
 		gocmd.FlagLdflags, gocmd.Ldflags(ldFlags...),
 	}
 

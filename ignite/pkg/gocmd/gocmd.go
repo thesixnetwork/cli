@@ -35,6 +35,7 @@ const (
 	FlagModValueReadOnly = "readonly"
 	FlagLdflags          = "-ldflags"
 	FlagOut              = "-o"
+	FlagTags             = "-tags"
 )
 
 const (
