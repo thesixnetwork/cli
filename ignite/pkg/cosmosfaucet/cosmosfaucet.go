@@ -131,7 +131,7 @@ func New(ctx context.Context, ccr chaincmdrunner.Runner, options ...Option) (Fau
 
 	// import the account if mnemonic is provided.
 	if f.accountMnemonic != "" {
-		_, err := f.runner.AddAccount(ctx, f.accountName, f.accountMnemonic, f.coinType)
+		_, err := f.runner.AddAccount(ctx, f.accountName, f.accountMnemonic, f.coinType, "")
 		if err != nil && err != chaincmdrunner.ErrAccountAlreadyExists {
 			return Faucet{}, err
 		}

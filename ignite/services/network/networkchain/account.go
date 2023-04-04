@@ -97,7 +97,7 @@ func (c Chain) detectPrefix(ctx context.Context) (string, error) {
 	acc, err = chainCmd.ShowAccount(ctx, sampleAccount)
 	if errors.Is(err, chaincmdrunner.ErrAccountDoesNotExist) {
 		// the sample account doesn't exist, we create it
-		acc, err = chainCmd.AddAccount(ctx, sampleAccount, "", "")
+		acc, err = chainCmd.AddAccount(ctx, sampleAccount, "", "","")
 	}
 	if err != nil {
 		return "", err
