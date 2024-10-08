@@ -13,6 +13,7 @@ BUILD_FOLDER = ./dist
 install:
 	@echo Installing Ignite CLI...
 	@go install $(BUILD_FLAGS) ./...
+	@ignite version
 
 ## build: Build the binary.
 build:
