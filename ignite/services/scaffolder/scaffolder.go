@@ -6,14 +6,18 @@ import (
 	"context"
 	"path/filepath"
 
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosanalysis"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosgen"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/gocmd"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
-	"github.com/ignite/cli/v28/ignite/version"
+	"github.com/gobuffalo/genny/v2"
+
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	"github.com/ignite/cli/v29/ignite/pkg/cache"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosanalysis"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosgen"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodulepath"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/version"
 )
 
 // Scaffolder is Ignite CLI app scaffolder.
@@ -21,15 +25,21 @@ type Scaffolder struct {
 	// Version of the chain
 	Version cosmosver.Version
 
-	// path of the app.
-	path string
+	// appPath path of the app.
+	appPath string
 
-	// modpath represents the go module path of the app.
+	// protoDir path of the proto folder.
+	protoDir string
+
+	// modpath represents the go module Path of the app.
 	modpath gomodulepath.Path
+
+	// runner represents the scaffold xgenny runner.
+	runner *xgenny.Runner
 }
 
 // New creates a new scaffold app.
-func New(appPath string) (Scaffolder, error) {
+func New(context context.Context, appPath, protoDir string) (Scaffolder, error) {
 	path, err := filepath.Abs(appPath)
 	if err != nil {
 		return Scaffolder{}, err
@@ -55,17 +65,40 @@ func New(appPath string) (Scaffolder, error) {
 	}
 
 	s := Scaffolder{
-		Version: ver,
-		path:    path,
-		modpath: modpath,
+		Version:  ver,
+		appPath:  path,
+		protoDir: protoDir,
+		modpath:  modpath,
+		runner:   xgenny.NewRunner(context, path),
 	}
 
 	return s, nil
 }
 
-func finish(ctx context.Context, cacheStorage cache.Storage, path, gomodPath string) error {
-	err := protoc(ctx, cacheStorage, path, gomodPath)
-	if err != nil {
+func (s Scaffolder) ApplyModifications() (xgenny.SourceModification, error) {
+	return s.runner.ApplyModifications()
+}
+
+func (s Scaffolder) Tracer() *placeholder.Tracer {
+	return s.runner.Tracer()
+}
+
+func (s Scaffolder) Run(gens ...*genny.Generator) error {
+	return s.runner.Run(gens...)
+}
+
+func (s Scaffolder) PostScaffold(ctx context.Context, cacheStorage cache.Storage, skipProto bool) error {
+	return PostScaffold(ctx, cacheStorage, s.appPath, s.protoDir, s.modpath.RawPath, skipProto)
+}
+
+func PostScaffold(ctx context.Context, cacheStorage cache.Storage, path, protoDir, gomodPath string, skipProto bool) error {
+	if !skipProto {
+		if err := protoc(ctx, cacheStorage, path, protoDir, gomodPath); err != nil {
+			return err
+		}
+	}
+
+	if err := gocmd.ModTidy(ctx, path); err != nil {
 		return err
 	}
 
@@ -75,10 +108,10 @@ func finish(ctx context.Context, cacheStorage cache.Storage, path, gomodPath str
 
 	_ = gocmd.GoImports(ctx, path) // goimports installation could fail, so ignore the error
 
-	return gocmd.ModTidy(ctx, path)
+	return nil
 }
 
-func protoc(ctx context.Context, cacheStorage cache.Storage, projectPath, gomodPath string) error {
+func protoc(ctx context.Context, cacheStorage cache.Storage, projectPath, protoDir, gomodPath string) error {
 	confpath, err := chainconfig.LocateDefault(projectPath)
 	if err != nil {
 		return err
@@ -91,11 +124,10 @@ func protoc(ctx context.Context, cacheStorage cache.Storage, projectPath, gomodP
 	options := []cosmosgen.Option{
 		cosmosgen.UpdateBufModule(),
 		cosmosgen.WithGoGeneration(),
-		cosmosgen.IncludeDirs(conf.Build.Proto.ThirdPartyPaths),
 	}
 
-	// Generate Typescript client code if it's enabled or when Vuex stores are generated
-	if conf.Client.Typescript.Path != "" || conf.Client.Vuex.Path != "" { //nolint:staticcheck,nolintlint
+	// Generate Typescript client code if it's enabled
+	if conf.Client.Typescript.Path != "" { //nolint:staticcheck,nolintlint
 		tsClientPath := chainconfig.TSClientPath(*conf)
 		if !filepath.IsAbs(tsClientPath) {
 			tsClientPath = filepath.Join(projectPath, tsClientPath)
@@ -110,21 +142,6 @@ func protoc(ctx context.Context, cacheStorage cache.Storage, projectPath, gomodP
 		)
 	}
 
-	if vuexPath := conf.Client.Vuex.Path; vuexPath != "" { //nolint:staticcheck,nolintlint
-		if filepath.IsAbs(vuexPath) {
-			vuexPath = filepath.Join(vuexPath, "generated")
-		} else {
-			vuexPath = filepath.Join(projectPath, vuexPath, "generated")
-		}
-
-		options = append(options,
-			cosmosgen.WithVuexGeneration(
-				cosmosgen.TypescriptModulePath(vuexPath),
-				vuexPath,
-			),
-		)
-	}
-
 	if conf.Client.OpenAPI.Path != "" {
 		openAPIPath := conf.Client.OpenAPI.Path
 		if !filepath.IsAbs(openAPIPath) {
@@ -134,5 +151,5 @@ func protoc(ctx context.Context, cacheStorage cache.Storage, projectPath, gomodP
 		options = append(options, cosmosgen.WithOpenAPIGeneration(openAPIPath))
 	}
 
-	return cosmosgen.Generate(ctx, cacheStorage, projectPath, conf.Build.Proto.Path, gomodPath, options...)
+	return cosmosgen.Generate(ctx, cacheStorage, projectPath, protoDir, gomodPath, options...)
 }

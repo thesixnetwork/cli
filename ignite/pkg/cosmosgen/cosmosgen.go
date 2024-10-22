@@ -9,15 +9,14 @@ import (
 	"github.com/iancoleman/strcase"
 	gomodule "golang.org/x/mod/module"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosanalysis/module"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosbuf"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/pkg/cache"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosanalysis/module"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosbuf"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
 )
 
 // generateOptions used to configure code generation.
 type generateOptions struct {
-	includeDirs     []string
 	useCache        bool
 	updateBufModule bool
 	ev              events.Bus
@@ -26,9 +25,6 @@ type generateOptions struct {
 
 	jsOut            func(module.Module) string
 	tsClientRootPath string
-
-	vuexOut      func(module.Module) string
-	vuexRootPath string
 
 	composablesOut      func(module.Module) string
 	composablesRootPath string
@@ -55,13 +51,6 @@ func WithTSClientGeneration(out ModulePathFunc, tsClientRootPath string, useCach
 	}
 }
 
-func WithVuexGeneration(out ModulePathFunc, vuexRootPath string) Option {
-	return func(o *generateOptions) {
-		o.vuexOut = out
-		o.vuexRootPath = vuexRootPath
-	}
-}
-
 func WithComposablesGeneration(out ModulePathFunc, composablesRootPath string) Option {
 	return func(o *generateOptions) {
 		o.composablesOut = out
@@ -76,7 +65,7 @@ func WithHooksGeneration(out ModulePathFunc, hooksRootPath string) Option {
 	}
 }
 
-// WithGoGeneration adds protobuf (gogoproto and pulsar) code generation.
+// WithGoGeneration adds protobuf (gogoproto) code generation.
 func WithGoGeneration() Option {
 	return func(o *generateOptions) {
 		o.generateProtobuf = true
@@ -87,14 +76,6 @@ func WithGoGeneration() Option {
 func WithOpenAPIGeneration(out string) Option {
 	return func(o *generateOptions) {
 		o.specOut = out
-	}
-}
-
-// IncludeDirs configures the third party proto dirs that used by app's proto.
-// relative to the projectPath.
-func IncludeDirs(dirs []string) Option {
-	return func(o *generateOptions) {
-		o.includeDirs = dirs
 	}
 }
 
@@ -120,7 +101,7 @@ type generator struct {
 	cacheStorage        cache.Storage
 	appPath             string
 	protoDir            string
-	gomodPath           string
+	goModPath           string
 	opts                *generateOptions
 	sdkImport           string
 	sdkDir              string
@@ -141,19 +122,17 @@ func (g *generator) cleanup() {
 
 // Generate generates code from protoDir of an SDK app residing at appPath with given options.
 // protoDir must be relative to the projectPath.
-func Generate(ctx context.Context, cacheStorage cache.Storage, appPath, protoDir, gomodPath string, options ...Option) error {
-	b, err := cosmosbuf.New()
+func Generate(ctx context.Context, cacheStorage cache.Storage, appPath, protoDir, goModPath string, options ...Option) error {
+	b, err := cosmosbuf.New(cacheStorage, goModPath)
 	if err != nil {
 		return err
 	}
-
-	defer b.Cleanup()
 
 	g := &generator{
 		buf:                 b,
 		appPath:             appPath,
 		protoDir:            protoDir,
-		gomodPath:           gomodPath,
+		goModPath:           goModPath,
 		opts:                &generateOptions{},
 		thirdModules:        make(map[string][]module.Module),
 		thirdModuleIncludes: make(map[string]protoIncludes),
@@ -186,10 +165,6 @@ func Generate(ctx context.Context, cacheStorage cache.Storage, appPath, protoDir
 		if err := g.generateGoGo(ctx); err != nil {
 			return err
 		}
-
-		if err := g.generatePulsar(ctx); err != nil {
-			return err
-		}
 	}
 
 	if g.opts.specOut != "" {
@@ -202,27 +177,6 @@ func Generate(ctx context.Context, cacheStorage cache.Storage, appPath, protoDir
 		if err := g.generateTS(ctx); err != nil {
 			return err
 		}
-	}
-
-	if g.opts.vuexOut != nil {
-		if err := g.generateVuex(); err != nil {
-			return err
-		}
-
-		// Update Vuex store dependencies when Vuex stores are generated.
-		// This update is required to link the "ts-client" folder so the
-		// package is available during development before publishing it.
-		if err := g.updateVuexDependencies(); err != nil {
-			return err
-		}
-
-		// Update Vue app dependencies when Vuex stores are generated.
-		// This update is required to link the "ts-client" folder so the
-		// package is available during development before publishing it.
-		if err := g.updateVueDependencies(); err != nil {
-			return err
-		}
-
 	}
 
 	if g.opts.composablesRootPath != "" {

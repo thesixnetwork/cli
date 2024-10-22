@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 description: Primary configuration file to describe the development environment for your blockchain.
-title: Configuration file
+title: Configuration documentation
 ---
 
 # Configuration file reference
@@ -11,6 +11,26 @@ to describe the development environment for your blockchain.
 
 Only a default set of parameters is provided. If more nuanced configuration is
 required, you can add these parameters to the `config.yml` file.
+
+## Validation
+
+Ignite uses the `validation` field to determine the kind of validation
+of your blockchain. There are currently two supported kinds of validation:
+
+- `sovereign` which is the standard kind of validation where your blockchain
+  has its own validator set. This is the default value when this field is not
+  in the config file.
+- `consumer` indicates your blockchain is a consumer chain, in the sense of
+  Replicated Security. That means it doesn't have a validator set, but
+  inherits the one of a provider chain.
+
+While the `sovereign` chain is the default validation when you run the `ignite scaffold
+chain`, to scaffold a consumer chain, you have to run `ignite scaffold chain
+--consumer`.
+
+This field is, at this time of writing, only used by Ignite at the genesis
+generation step, because the genesis of a sovereign chain and a consumer chain
+are different.
 
 ## Accounts
 
@@ -181,17 +201,6 @@ should tell Ignite about this:
 build:
   proto:
     path: "myproto"
-```
-
-Ignite comes with required third-party proto out of the box. Ignite also looks
-into `third_party/proto` and `proto_vendor` directories for extra proto files.
-If your project keeps third-party proto files in a different directory, you
-should tell Ignite about this:
-
-```yml
-build:
-  proto:
-    third_party_paths: ["my_third_party/proto"]
 ```
 
 ## Faucet

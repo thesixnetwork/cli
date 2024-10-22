@@ -3,10 +3,13 @@ package ignitecmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/services/scaffolder"
+	"github.com/ignite/cli/v29/ignite/config/chain/defaults"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/xfilepath"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/pkg/xgit"
+	"github.com/ignite/cli/v29/ignite/services/scaffolder"
 )
 
 const (
@@ -80,8 +83,14 @@ about Cosmos SDK on https://docs.cosmos.network
 	c.Flags().StringP(flagPath, "p", "", "create a project in a specific path")
 	c.Flags().Bool(flagNoDefaultModule, false, "create a project without a default module")
 	c.Flags().StringSlice(flagParams, []string{}, "add default module parameters")
+	c.Flags().StringSlice(flagModuleConfigs, []string{}, "add module configs")
 	c.Flags().Bool(flagSkipGit, false, "skip Git repository initialization")
+	c.Flags().Bool(flagSkipProto, false, "skip proto generation")
 	c.Flags().Bool(flagMinimal, false, "create a minimal blockchain (with the minimum required Cosmos SDK modules)")
+	c.Flags().String(flagProtoDir, defaults.ProtoDir, "chain proto directory")
+
+	// consumer scaffolding have been migrated to an ignite app
+	_ = c.Flags().MarkDeprecated("consumer", "use 'ignite consumer' app instead")
 
 	return c
 }
@@ -91,20 +100,25 @@ func scaffoldChainHandler(cmd *cobra.Command, args []string) error {
 	defer session.End()
 
 	var (
-		name               = args[0]
-		addressPrefix      = getAddressPrefix(cmd)
-		appPath            = flagGetPath(cmd)
+		name          = args[0]
+		addressPrefix = getAddressPrefix(cmd)
+		appPath       = flagGetPath(cmd)
+
 		noDefaultModule, _ = cmd.Flags().GetBool(flagNoDefaultModule)
 		skipGit, _         = cmd.Flags().GetBool(flagSkipGit)
 		minimal, _         = cmd.Flags().GetBool(flagMinimal)
+		params, _          = cmd.Flags().GetStringSlice(flagParams)
+		moduleConfigs, _   = cmd.Flags().GetStringSlice(flagModuleConfigs)
+		skipProto, _       = cmd.Flags().GetBool(flagSkipProto)
+		protoDir, _        = cmd.Flags().GetString(flagProtoDir)
 	)
 
-	params, err := cmd.Flags().GetStringSlice(flagParams)
-	if err != nil {
-		return err
-	}
-	if noDefaultModule && len(params) > 0 {
-		return errors.New("params flag is only supported if the default module is enabled")
+	if noDefaultModule {
+		if len(params) > 0 {
+			return errors.New("params flag is only supported if the default module is enabled")
+		} else if len(moduleConfigs) > 0 {
+			return errors.New("module configs flag is only supported if the default module is enabled")
+		}
 	}
 
 	cacheStorage, err := newCache(cmd)
@@ -112,25 +126,41 @@ func scaffoldChainHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	appdir, err := scaffolder.Init(
+	runner := xgenny.NewRunner(cmd.Context(), appPath)
+	appDir, goModule, err := scaffolder.Init(
 		cmd.Context(),
-		cacheStorage,
-		placeholder.New(),
+		runner,
 		appPath,
 		name,
 		addressPrefix,
+		protoDir,
 		noDefaultModule,
-		skipGit,
 		minimal,
 		params,
+		moduleConfigs,
 	)
 	if err != nil {
 		return err
 	}
 
-	path, err := relativePath(appdir)
+	path, err := xfilepath.RelativePath(appDir)
 	if err != nil {
 		return err
+	}
+
+	if _, err := runner.ApplyModifications(); err != nil {
+		return err
+	}
+
+	if err := scaffolder.PostScaffold(cmd.Context(), cacheStorage, appDir, protoDir, goModule, skipProto); err != nil {
+		return err
+	}
+
+	if !skipGit {
+		// Initialize git repository and perform the first commit
+		if err := xgit.InitAndCommit(path); err != nil {
+			return err
+		}
 	}
 
 	return session.Printf(tplScaffoldChainSuccess, path)

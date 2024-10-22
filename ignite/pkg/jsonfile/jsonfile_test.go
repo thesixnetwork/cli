@@ -15,8 +15,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/tarball"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/tarball"
 )
 
 func TestJSONFile_Field(t *testing.T) {
@@ -356,7 +356,7 @@ func TestFromURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			url := tt.args.url
 			if url == "" {
-				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					file, err := os.ReadFile(tt.args.filepath)
 					require.NoError(t, err)
 					_, err = w.Write(file)

@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/templates/field"
-	"github.com/ignite/cli/v28/ignite/templates/field/datatype"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/templates/field"
+	"github.com/ignite/cli/v29/ignite/templates/field/datatype"
 )
 
 func TestParseTypeFields(t *testing.T) {
@@ -82,13 +82,13 @@ func TestParseTypeFields(t *testing.T) {
 		},
 		{
 			name:    "map type without simulation",
-			addKind: MapType("foo", "bar"),
+			addKind: MapType("foo"),
 			addOptions: []AddTypeOption{
 				TypeWithoutSimulation(),
 			},
 			expectedOptions: addTypeOptions{
 				moduleName:        testModuleName,
-				indexes:           []string{"foo", "bar"},
+				index:             "foo",
 				isMap:             true,
 				withoutSimulation: true,
 				signer:            testSigner,
@@ -148,7 +148,7 @@ func TestParseTypeFields(t *testing.T) {
 	}
 }
 
-// indirectly tests checkForbiddenTypeField()
+// indirectly tests checkForbiddenTypeField().
 func TestCheckForbiddenTypeIndexField(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -216,5 +216,5 @@ func TestCheckForbiddenTypeIndexField(t *testing.T) {
 	}
 }
 
-func TestAddType(t *testing.T) {
+func TestAddType(_ *testing.T) {
 }

@@ -10,9 +10,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/env"
-	"github.com/ignite/cli/v28/ignite/pkg/goenv"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/env"
+	"github.com/ignite/cli/v29/ignite/pkg/goenv"
 )
 
 // Runner is an object to run commands.
@@ -107,7 +107,6 @@ func (r *Runner) Run(ctx context.Context, steps ...*step.Step) error {
 				step.Exec.Command,
 				strings.Join(step.Exec.Args, " "))
 		}
-		step := step
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -234,7 +233,7 @@ func (r *Runner) newCommand(step *step.Step) Executor {
 	}
 
 	// Initialize command
-	command := exec.Command(step.Exec.Command, step.Exec.Args...)
+	command := exec.Command(step.Exec.Command, step.Exec.Args...) //nolint:gosec
 	command.Stdout = stdout
 	command.Stderr = stderr
 	command.Dir = dir

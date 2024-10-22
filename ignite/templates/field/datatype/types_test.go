@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/templates/field/datatype"
+	"github.com/ignite/cli/v29/ignite/templates/field/datatype"
 )
 
 func TestIsSupportedType(t *testing.T) {
@@ -57,6 +57,11 @@ func TestIsSupportedType(t *testing.T) {
 		{
 			name:     "coin slice",
 			typename: datatype.Coins,
+			ok:       true,
+		},
+		{
+			name:     "bytes",
+			typename: datatype.Bytes,
 			ok:       true,
 		},
 		{

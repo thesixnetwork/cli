@@ -18,8 +18,6 @@ var (
 
 	templateTSClientRoot           = newTemplateWriter("root")
 	templateTSClientModule         = newTemplateWriter("module")
-	templateTSClientVue            = newTemplateWriter("vue")
-	templateTSClientVueRoot        = newTemplateWriter("vue-root")
 	templateTSClientComposable     = newTemplateWriter("composable")
 	templateTSClientComposableRoot = newTemplateWriter("composable-root")
 )
@@ -68,7 +66,7 @@ func (t templateWriter) Write(destDir, protoPath string, data interface{}) error
 
 			return strcase.ToCamel(replacer.Replace(word))
 		},
-		"resolveFile": func(fullPath string) string {
+		"resolveFile": func(fullPath string) string { // TODO to check
 			rel, _ := filepath.Rel(protoPath, fullPath)
 			rel = strings.TrimSuffix(rel, ".proto")
 			return rel

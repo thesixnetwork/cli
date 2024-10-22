@@ -7,15 +7,16 @@ import (
 	"github.com/gobuffalo/genny/v2"
 	"github.com/gobuffalo/plush/v4"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/pkg/xstrings"
-	"github.com/ignite/cli/v28/ignite/templates/field/plushhelpers"
-	"github.com/ignite/cli/v28/ignite/templates/module"
-	"github.com/ignite/cli/v28/ignite/templates/typed"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodulepath"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/pkg/xast"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/pkg/xstrings"
+	"github.com/ignite/cli/v29/ignite/templates/field/plushhelpers"
+	"github.com/ignite/cli/v29/ignite/templates/module"
+	"github.com/ignite/cli/v29/ignite/templates/typed"
 )
 
 // NewIBC returns the generator to scaffold the implementation of the IBCModule interface inside a module.
@@ -40,14 +41,18 @@ func NewIBC(replacer placeholder.Replacer, opts *CreateOptions) (*genny.Generato
 	ctx.Set("moduleName", opts.ModuleName)
 	ctx.Set("modulePath", opts.ModulePath)
 	ctx.Set("appName", opts.AppName)
+	ctx.Set("protoVer", opts.ProtoVer)
 	ctx.Set("ibcOrdering", opts.IBCOrdering)
 	ctx.Set("dependencies", opts.Dependencies)
-	ctx.Set("protoPkgName", module.ProtoPackageName(appModulePath, opts.ModuleName))
+	ctx.Set("protoPkgName", module.ProtoPackageName(appModulePath, opts.ModuleName, opts.ProtoVer))
 
 	plushhelpers.ExtendPlushContext(ctx)
 	g.Transformer(xgenny.Transformer(ctx))
+	g.Transformer(genny.Replace("{{protoDir}}", opts.ProtoDir))
 	g.Transformer(genny.Replace("{{appName}}", opts.AppName))
 	g.Transformer(genny.Replace("{{moduleName}}", opts.ModuleName))
+	g.Transformer(genny.Replace("{{protoVer}}", opts.ProtoVer))
+
 	return g, nil
 }
 
@@ -55,6 +60,15 @@ func genesisModify(replacer placeholder.Replacer, opts *CreateOptions) genny.Run
 	return func(r *genny.Runner) error {
 		path := filepath.Join(opts.AppPath, "x", opts.ModuleName, "module/genesis.go")
 		f, err := r.Disk.Find(path)
+		if err != nil {
+			return err
+		}
+
+		// Import
+		content, err := xast.AppendImports(
+			f.String(),
+			xast.WithLastImport("cosmossdk.io/errors"),
+		)
 		if err != nil {
 			return err
 		}
@@ -69,11 +83,11 @@ if k.ShouldBound(ctx, genState.PortId) {
 	// and claims the returned capability
 	err := k.BindPort(ctx, genState.PortId)
 	if err != nil {
-		panic("could not claim port capability: " + err.Error())
+		return errors.Wrap(err, "could not claim port capability")
 	}
 }`
 		replacementInit := fmt.Sprintf(templateInit, typed.PlaceholderGenesisModuleInit)
-		content := replacer.Replace(f.String(), typed.PlaceholderGenesisModuleInit, replacementInit)
+		content = replacer.Replace(content, typed.PlaceholderGenesisModuleInit, replacementInit)
 
 		// Genesis export
 		templateExport := `genesis.PortId = k.GetPort(ctx)
@@ -95,10 +109,13 @@ func genesisTypesModify(replacer placeholder.Replacer, opts *CreateOptions) genn
 		}
 
 		// Import
-		templateImport := `host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
-%s`
-		replacementImport := fmt.Sprintf(templateImport, typed.PlaceholderGenesisTypesImport)
-		content := replacer.Replace(f.String(), typed.PlaceholderGenesisTypesImport, replacementImport)
+		content, err := xast.AppendImports(
+			f.String(),
+			xast.WithLastNamedImport("host", "github.com/cosmos/ibc-go/v8/modules/core/24-host"),
+		)
+		if err != nil {
+			return err
+		}
 
 		// Default genesis
 		templateDefault := `PortId: PortID,
@@ -126,7 +143,7 @@ func genesisTypesModify(replacer placeholder.Replacer, opts *CreateOptions) genn
 //   - Existence of a message named 'GenesisState' in genesis.proto.
 func genesisProtoModify(opts *CreateOptions) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := filepath.Join(opts.AppPath, "proto", opts.AppName, opts.ModuleName, "genesis.proto")
+		path := opts.ProtoFile("genesis.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -170,7 +187,7 @@ PortID = "%[1]v"`
 		// PlaceholderIBCKeysPort
 		templatePort := `var (
 	// PortKey defines the key to store the port ID in store
-	PortKey = KeyPrefix("%[1]v-port-")
+	PortKey = collections.NewPrefix("%[1]v-port-")
 )`
 		replacementPort := fmt.Sprintf(templatePort, opts.ModuleName)
 		content = replacer.Replace(content, module.PlaceholderIBCKeysPort, replacementPort)
@@ -189,11 +206,20 @@ func appIBCModify(replacer placeholder.Replacer, opts *CreateOptions) genny.RunF
 		}
 
 		// Import
-		templateImport := `%[1]v
-%[2]vmodule "%[3]v/x/%[2]v/module"
-%[2]vmoduletypes "%[3]v/x/%[2]v/types"`
-		replacementImport := fmt.Sprintf(templateImport, module.PlaceholderIBCImport, opts.ModuleName, opts.ModulePath)
-		content := replacer.Replace(f.String(), module.PlaceholderIBCImport, replacementImport)
+		content, err := xast.AppendImports(
+			f.String(),
+			xast.WithLastNamedImport(
+				fmt.Sprintf("%[1]vmodule", opts.ModuleName),
+				fmt.Sprintf("%[1]v/x/%[2]v/module", opts.ModulePath, opts.ModuleName),
+			),
+			xast.WithLastNamedImport(
+				fmt.Sprintf("%[1]vmoduletypes", opts.ModuleName),
+				fmt.Sprintf("%[1]v/x/%[2]v/types", opts.ModulePath, opts.ModuleName),
+			),
+		)
+		if err != nil {
+			return err
+		}
 
 		// create IBC module
 		templateIBCModule := `%[2]vIBCModule := ibcfee.NewIBCMiddleware(%[2]vmodule.NewIBCModule(app.%[3]vKeeper), app.IBCFeeKeeper)

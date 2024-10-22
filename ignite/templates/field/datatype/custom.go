@@ -5,18 +5,19 @@ import (
 
 	"github.com/emicklei/proto"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
 )
 
 // DataCustom is a custom data type definition.
 var DataCustom = DataType{
-	DataType:         func(datatype string) string { return fmt.Sprintf("*%s", datatype) },
-	DefaultTestValue: "null",
+	DataType:                func(datatype string) string { return fmt.Sprintf("*%s", datatype) },
+	CollectionsKeyValueName: func(string) string { return collectionValueComment },
+	DefaultTestValue:        "null",
 	ProtoType: func(datatype, name string, index int) string {
 		return fmt.Sprintf("%s %s = %d", datatype, name, index)
 	},
-	GenesisArgs: func(name multiformatname.Name, value int) string {
+	GenesisArgs: func(name multiformatname.Name, _ int) string {
 		return fmt.Sprintf("%s: new(types.%s),\n", name.UpperCamel, name.UpperCamel)
 	},
 	CLIArgs: func(name multiformatname.Name, datatype, prefix string, argIndex int) string {

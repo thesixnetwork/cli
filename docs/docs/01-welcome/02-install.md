@@ -24,7 +24,7 @@ Ignite CLI is supported for the following operating systems:
 
 Ignite CLI is written in the Go programming language. To use Ignite CLI on a local system:
 
-- Install [Go](https://golang.org/doc/install) (**version 1.21.1** or higher)
+- Install [Go](https://golang.org/doc/install) (**version 1.23** or higher)
 - Ensure the Go environment variables are [set properly](https://golang.org/doc/gopath_code#GOPATH) on your system
 
 ## Verify your Ignite CLI version
@@ -37,7 +37,21 @@ ignite version
 
 ## Installing Ignite CLI
 
-To install the latest version of the `ignite` binary use the following command.
+To install the latest version of Ignite use [HomeBrew](https://formulae.brew.sh/formula/ignite) on macOS and GNU/Linux:
+
+```sh
+brew install ignite
+```
+
+Or use Snap on GNU/Linux:
+
+```sh
+snap install ignite --classic
+```
+
+### Install manually
+
+Alternatively, you can install the latest version of the `ignite` binary use the following command:
 
 ```bash
 curl https://get.ignite.com/cli! | bash
@@ -45,11 +59,6 @@ curl https://get.ignite.com/cli! | bash
 
 This command invokes `curl` to download the installation script and pipes the output to `bash` to perform the
 installation.  The `ignite` binary is installed in `/usr/local/bin`.
-
-To learn more or customize the installation process, see the [installer docs](https://github.com/ignite/installer) on
-GitHub.
-
-### Write permission
 
 Ignite CLI installation requires write permission to the `/usr/local/bin/` directory. If the installation fails because
 you do not have write permission to `/usr/local/bin/`, run the following command:
@@ -77,6 +86,9 @@ In this case, use sudo before `curl` and before `bash`:
 ```bash
 sudo curl https://get.ignite.com/cli | sudo bash
 ```
+
+To learn more or customize the installation process, see the [installer docs](https://github.com/ignite/installer) on
+GitHub.
 
 ## Upgrading your Ignite CLI installation {#upgrade}
 

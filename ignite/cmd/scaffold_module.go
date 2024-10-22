@@ -8,33 +8,23 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/validation"
-	"github.com/ignite/cli/v28/ignite/services/scaffolder"
-	modulecreate "github.com/ignite/cli/v28/ignite/templates/module/create"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/validation"
+	"github.com/ignite/cli/v29/ignite/services/scaffolder"
+	modulecreate "github.com/ignite/cli/v29/ignite/templates/module/create"
 )
 
 // moduleNameKeeperAlias is a map of well known module names that have a different keeper name than the usual <module-name>Keeper.
-var moduleNameKeeperAlias = map[string]string{
-	"auth": "account", // TODO(@julienrbrt) remove this when x/accounts is released
-}
+var moduleNameKeeperAlias = map[string]string{}
 
 const (
 	flagDep                 = "dep"
 	flagIBC                 = "ibc"
 	flagParams              = "params"
+	flagModuleConfigs       = "module-configs"
 	flagIBCOrdering         = "ordering"
 	flagRequireRegistration = "require-registration"
-
-	govDependencyWarning = `⚠️ If your app has been scaffolded with Ignite CLI 0.16.x or below
-Please make sure that your module keeper definition is defined after gov module keeper definition in app/app.go:
-
-app.GovKeeper = ...
-...
-[your module keeper definition]
-`
 )
 
 // NewScaffoldModule returns the command to scaffold a Cosmos SDK module.
@@ -111,10 +101,13 @@ params.
 
 	c.Flags().AddFlagSet(flagSetYes())
 	c.Flags().StringSlice(flagDep, []string{}, "add a dependency on another module")
-	c.Flags().Bool(flagIBC, false, "add IBC functionality")
+	// c.Flags().Bool(flagIBC, false, "add IBC functionality")
 	c.Flags().String(flagIBCOrdering, "none", "channel ordering of the IBC module [none|ordered|unordered]")
 	c.Flags().Bool(flagRequireRegistration, false, "fail if module can't be registered")
 	c.Flags().StringSlice(flagParams, []string{}, "add module parameters")
+	c.Flags().StringSlice(flagModuleConfigs, []string{}, "add module configs")
+
+	_ = c.Flags().MarkDeprecated(flagIBC, "IBC modules are temporarily not supported in Ignite v29 (waiting to IBC compatible version with Cosmos SDK v0.52)") // https://github.com/ignite/cli/pull/4289
 
 	return c
 }
@@ -128,21 +121,17 @@ func scaffoldModuleHandler(cmd *cobra.Command, args []string) error {
 	session := cliui.New(cliui.StartSpinnerWithText(statusScaffolding))
 	defer session.End()
 
-	ibcModule, err := cmd.Flags().GetBool(flagIBC)
+	cfg, _, err := getChainConfig(cmd)
 	if err != nil {
 		return err
 	}
 
-	ibcOrdering, err := cmd.Flags().GetString(flagIBCOrdering)
-	if err != nil {
-		return err
-	}
-	requireRegistration, err := cmd.Flags().GetBool(flagRequireRegistration)
-	if err != nil {
-		return err
-	}
+	ibcModule, _ := cmd.Flags().GetBool(flagIBC)
+	ibcOrdering, _ := cmd.Flags().GetString(flagIBCOrdering)
+	requireRegistration, _ := cmd.Flags().GetBool(flagRequireRegistration)
+	params, _ := cmd.Flags().GetStringSlice(flagParams)
 
-	params, err := cmd.Flags().GetStringSlice(flagParams)
+	moduleConfigs, err := cmd.Flags().GetStringSlice(flagModuleConfigs)
 	if err != nil {
 		return err
 	}
@@ -154,6 +143,7 @@ func scaffoldModuleHandler(cmd *cobra.Command, args []string) error {
 
 	options := []scaffolder.ModuleCreationOption{
 		scaffolder.WithParams(params),
+		scaffolder.WithModuleConfigs(moduleConfigs),
 	}
 
 	// Check if the module must be an IBC module
@@ -162,10 +152,7 @@ func scaffoldModuleHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get module dependencies
-	dependencies, err := cmd.Flags().GetStringSlice(flagDep)
-	if err != nil {
-		return err
-	}
+	dependencies, _ := cmd.Flags().GetStringSlice(flagDep)
 	if len(dependencies) > 0 {
 		var deps []modulecreate.Dependency
 
@@ -189,13 +176,12 @@ func scaffoldModuleHandler(cmd *cobra.Command, args []string) error {
 	var msg bytes.Buffer
 	fmt.Fprintf(&msg, "\n🎉 Module created %s.\n\n", name)
 
-	sc, err := scaffolder.New(appPath)
+	sc, err := scaffolder.New(cmd.Context(), appPath, cfg.Build.Proto.Path)
 	if err != nil {
 		return err
 	}
 
-	sm, err := sc.CreateModule(cmd.Context(), cacheStorage, placeholder.New(), name, options...)
-	if err != nil {
+	if err := sc.CreateModule(name, options...); err != nil {
 		var validationErr validation.Error
 		if !requireRegistration && errors.As(err, &validationErr) {
 			fmt.Fprintf(&msg, "Can't register module '%s'.\n", name)
@@ -203,25 +189,23 @@ func scaffoldModuleHandler(cmd *cobra.Command, args []string) error {
 		} else {
 			return err
 		}
-	} else {
-		modificationsStr, err := sourceModificationToString(sm)
-		if err != nil {
-			return err
-		}
-
-		session.Println(modificationsStr)
 	}
 
-	// in previously scaffolded apps gov keeper is defined below the scaffolded module keeper definition
-	// therefore we must warn the user to manually move the definition if it's the case
-	// https://github.com/ignite/cli/issues/818#issuecomment-865736052
-	for _, name := range dependencies {
-		if name == "Gov" {
-			session.Print(govDependencyWarning)
-
-			break
-		}
+	sm, err := sc.ApplyModifications()
+	if err != nil {
+		return err
 	}
+
+	if err := sc.PostScaffold(cmd.Context(), cacheStorage, false); err != nil {
+		return err
+	}
+
+	modificationsStr, err := sm.String()
+	if err != nil {
+		return err
+	}
+
+	session.Println(modificationsStr)
 
 	return session.Print(msg.String())
 }

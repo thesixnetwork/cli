@@ -5,7 +5,6 @@ import (
 
 	"<%= ModulePath %>/x/<%= ModuleName %>/keeper"
 	"<%= ModulePath %>/x/<%= ModuleName %>/types"
-	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
@@ -16,8 +15,9 @@ func SimulateMsgCreate<%= TypeName.UpperCamel %>(
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
+	txGen client.TxConfig,
 ) simtypes.Operation {
-	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
+	return func(r *rand.Rand, app simtypes.AppEntrypoint, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		simAccount, _ := simtypes.RandomAcc(r, accs)
 
@@ -28,7 +28,7 @@ func SimulateMsgCreate<%= TypeName.UpperCamel %>(
 		txCtx := simulation.OperationInput{
 			R:               r,
 			App:             app,
-			TxGen:           moduletestutil.MakeTestEncodingConfig().TxConfig,
+			TxGen:           txGen,
 			Cdc:             nil,
 			Msg:             msg,
 			Context:         ctx,
@@ -46,16 +46,26 @@ func SimulateMsgUpdate<%= TypeName.UpperCamel %>(
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
+	txGen client.TxConfig,
 ) simtypes.Operation {
-	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
+	return func(r *rand.Rand, app simtypes.AppEntrypoint, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		var (
 			simAccount = simtypes.Account{}
 			<%= TypeName.LowerCamel %> = types.<%= TypeName.UpperCamel %>{}
 			msg = &types.MsgUpdate<%= TypeName.UpperCamel %>{}
-			all<%= TypeName.UpperCamel %> = k.GetAll<%= TypeName.UpperCamel %>(ctx)
 			found = false
 		)
+
+		var all<%= TypeName.UpperCamel %> []types.<%= TypeName.UpperCamel %>
+		err := k.<%= TypeName.UpperCamel %>.Walk(ctx, nil, func(key uint64, value types.<%= TypeName.UpperCamel %>) (stop bool, err error) {
+			all<%= TypeName.UpperCamel %> = append(all<%= TypeName.UpperCamel %>, value)
+			return false, nil
+		})
+		if err != nil {
+			panic(err)
+		}
+		
 		for _, obj := range all<%= TypeName.UpperCamel %> {
 			simAccount, found = FindAccount(accs, obj.<%= MsgSigner.UpperCamel %>)
 			if found {
@@ -72,7 +82,7 @@ func SimulateMsgUpdate<%= TypeName.UpperCamel %>(
 		txCtx := simulation.OperationInput{
 			R:               r,
 			App:             app,
-			TxGen:           moduletestutil.MakeTestEncodingConfig().TxConfig,
+			TxGen:           txGen,
 			Cdc:             nil,
 			Msg:             msg,
 			Context:         ctx,
@@ -90,16 +100,26 @@ func SimulateMsgDelete<%= TypeName.UpperCamel %>(
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
+	txGen client.TxConfig,
 ) simtypes.Operation {
-	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
+	return func(r *rand.Rand, app simtypes.AppEntrypoint, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		var (
 			simAccount = simtypes.Account{}
 			<%= TypeName.LowerCamel %> = types.<%= TypeName.UpperCamel %>{}
 			msg = &types.MsgUpdate<%= TypeName.UpperCamel %>{}
-			all<%= TypeName.UpperCamel %> = k.GetAll<%= TypeName.UpperCamel %>(ctx)
 			found = false
 		)
+
+		var all<%= TypeName.UpperCamel %> []types.<%= TypeName.UpperCamel %>
+		err := k.<%= TypeName.UpperCamel %>.Walk(ctx, nil, func(key uint64, value types.<%= TypeName.UpperCamel %>) (stop bool, err error) {
+			all<%= TypeName.UpperCamel %> = append(all<%= TypeName.UpperCamel %>, value)
+			return false, nil
+		})
+		if err != nil {
+			panic(err)
+		}
+
 		for _, obj := range all<%= TypeName.UpperCamel %> {
 			simAccount, found = FindAccount(accs, obj.<%= MsgSigner.UpperCamel %>)
 			if found {
@@ -116,7 +136,7 @@ func SimulateMsgDelete<%= TypeName.UpperCamel %>(
 		txCtx := simulation.OperationInput{
 			R:               r,
 			App:             app,
-			TxGen:           moduletestutil.MakeTestEncodingConfig().TxConfig,
+			TxGen:           txGen,
 			Cdc:             nil,
 			Msg:             msg,
 			Context:         ctx,

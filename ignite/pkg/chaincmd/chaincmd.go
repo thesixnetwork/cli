@@ -6,9 +6,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 const (
@@ -20,13 +20,14 @@ const (
 	commandGentx             = "gentx"
 	commandCollectGentxs     = "collect-gentxs"
 	commandValidateGenesis   = "validate"
+	commandExportGenssis     = "export"
 	commandShowNodeID        = "show-node-id"
 	commandStatus            = "status"
 	commandTx                = "tx"
 	commandQuery             = "query"
 	commandUnsafeReset       = "unsafe-reset-all"
-	commandExport            = "export"
 	commandTendermint        = "tendermint"
+	commandTestnetInPlace    = "in-place-testnet"
 
 	optionHome                             = "--home"
 	optionNode                             = "--node"
@@ -54,6 +55,11 @@ const (
 	optionVestingAmount                    = "--vesting-amount"
 	optionVestingEndTime                   = "--vesting-end-time"
 	optionBroadcastMode                    = "--broadcast-mode"
+	optionAccount                          = "--account"
+	optionIndex                            = "--index"
+	optionValidatorPrivateKey              = "--validator-privkey"
+	optionAccountToFund                    = "--accounts-to-fund"
+	optionSkipConfirmation                 = "--skip-confirmation"
 
 	constTendermint = "tendermint"
 	constJSON       = "json"
@@ -186,7 +192,7 @@ func (c ChainCmd) InitCommand(moniker string) step.Option {
 }
 
 // AddKeyCommand returns the command to add a new key in the chain keyring.
-func (c ChainCmd) AddKeyCommand(accountName, coinType string, algo string) step.Option {
+func (c ChainCmd) AddKeyCommand(accountName, coinType, accountNumber, addressIndex string, algo string) step.Option {
 	command := []string{
 		commandKeys,
 		"add",
@@ -198,16 +204,24 @@ func (c ChainCmd) AddKeyCommand(accountName, coinType string, algo string) step.
 		command = append(command, optionCoinType, coinType)
 	}
 
+	if accountNumber != "" {
+		command = append(command, optionAccount, accountNumber)
+	}
+	if addressIndex != "" {
+		command = append(command, optionIndex, addressIndex)
+	}
+
 	if algo != "" {
 		command = append(command, optionAlgo, algo)
 	}
+
 	command = c.attachKeyringBackend(command)
 
 	return c.cliCommand(command)
 }
 
 // RecoverKeyCommand returns the command to recover a key into the chain keyring from a mnemonic.
-func (c ChainCmd) RecoverKeyCommand(accountName, coinType string, algo string) step.Option {
+func (c ChainCmd) RecoverKeyCommand(accountName, coinType, accountNumber, addressIndex string, algo string) step.Option {
 	command := []string{
 		commandKeys,
 		"add",
@@ -216,6 +230,12 @@ func (c ChainCmd) RecoverKeyCommand(accountName, coinType string, algo string) s
 	}
 	if coinType != "" {
 		command = append(command, optionCoinType, coinType)
+	}
+	if accountNumber != "" {
+		command = append(command, optionAccount, accountNumber)
+	}
+	if addressIndex != "" {
+		command = append(command, optionIndex, addressIndex)
 	}
 	if algo != "" {
 		command = append(command, optionAlgo, algo)
@@ -482,7 +502,8 @@ func (c ChainCmd) UnsafeResetCommand() step.Option {
 // ExportCommand returns the command to export the state of the blockchain into a genesis file.
 func (c ChainCmd) ExportCommand() step.Option {
 	command := []string{
-		commandExport,
+		commandGenesis,
+		commandExportGenssis,
 	}
 	return c.daemonCommand(command)
 }

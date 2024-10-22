@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	pluginsconfig "github.com/ignite/cli/v28/ignite/config/plugins"
+	pluginsconfig "github.com/ignite/cli/v29/ignite/config/plugins"
 )
 
 func TestPluginIsGlobal(t *testing.T) {
@@ -20,6 +20,8 @@ func TestPluginIsLocalPath(t *testing.T) {
 	assert.False(t, pluginsconfig.Plugin{}.IsLocalPath())
 	assert.False(t, pluginsconfig.Plugin{Path: "github.com/ignite/example"}.IsLocalPath())
 	assert.True(t, pluginsconfig.Plugin{Path: "/home/bob/example"}.IsLocalPath())
+	assert.True(t, pluginsconfig.Plugin{Path: "./example"}.IsLocalPath())
+	assert.True(t, pluginsconfig.Plugin{Path: "../example"}.IsLocalPath())
 }
 
 func TestPluginHasPath(t *testing.T) {
@@ -257,6 +259,7 @@ func TestConfigSave(t *testing.T) {
 		{
 			name: "fail: config path is empty",
 			buildConfig: func(t *testing.T) *pluginsconfig.Config {
+				t.Helper()
 				return &pluginsconfig.Config{}
 			},
 			expectedError: "plugin config save: empty path",
@@ -264,6 +267,7 @@ func TestConfigSave(t *testing.T) {
 		{
 			name: "ok: config path is a file that doesn't exist",
 			buildConfig: func(t *testing.T) *pluginsconfig.Config {
+				t.Helper()
 				cfg, err := pluginsconfig.ParseDir(t.TempDir())
 				require.NoError(t, err)
 				return cfg
@@ -273,6 +277,7 @@ func TestConfigSave(t *testing.T) {
 		{
 			name: "ok: config path is an existing file",
 			buildConfig: func(t *testing.T) *pluginsconfig.Config {
+				t.Helper()
 				// copy testdata/igniteapps.yml to tmp because it will be modified
 				dir := t.TempDir()
 				bz, err := os.ReadFile("testdata/igniteapps.yml")
@@ -292,15 +297,15 @@ func TestConfigSave(t *testing.T) {
 				return cfg
 			},
 			expectedContent: `apps:
-- path: /path/to/plugin1
-- path: /path/to/plugin22
-  with:
-    bar: baz
-    foo: bar
-    key: val
-- path: /path/to/plugin3
-  with:
-    key: val
+    - path: /path/to/plugin1
+    - path: /path/to/plugin22
+      with:
+        bar: baz
+        foo: bar
+        key: val
+    - path: /path/to/plugin3
+      with:
+        key: val
 `,
 		},
 	}

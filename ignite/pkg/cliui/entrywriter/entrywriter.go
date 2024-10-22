@@ -5,8 +5,8 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/xstrings"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/xstrings"
 )
 
 const (
@@ -53,7 +53,7 @@ func Write(out io.Writer, header []string, entries ...[]string) error {
 		if len(entry) != len(header) {
 			return errors.Wrapf(ErrInvalidFormat, "entry %d doesn't match header length", i)
 		}
-		if _, err := fmt.Fprintf(w, formatLine(entry, false)+"\n"); err != nil {
+		if _, err := fmt.Fprintf(w, formatLine(entry, false)+"\n"); err != nil { //nolint:govet,nolintlint
 			return err
 		}
 	}

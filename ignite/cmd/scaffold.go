@@ -1,20 +1,16 @@
 package ignitecmd
 
 import (
-	"path/filepath"
-
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/xgit"
-	"github.com/ignite/cli/v28/ignite/services/scaffolder"
-	"github.com/ignite/cli/v28/ignite/version"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/xgit"
+	"github.com/ignite/cli/v29/ignite/services/scaffolder"
+	"github.com/ignite/cli/v29/ignite/version"
 )
 
 // flags related to component scaffolding.
@@ -24,6 +20,7 @@ const (
 	flagNoSimulation = "no-simulation"
 	flagResponse     = "response"
 	flagDescription  = "desc"
+	flagProtoDir     = "proto-dir"
 
 	msgCommitPrefix = "Your saved project changes have not been committed.\nTo enable reverting to your current state, commit your saved changes."
 	msgCommitPrompt = "Do you want to proceed without committing your saved changes"
@@ -38,8 +35,8 @@ Currently supports:
 | string       | -       | yes   | string    | Text type                       |
 | array.string | strings | no    | []string  | List of text type               |
 | bool         | -       | yes   | bool      | Boolean type                    |
-| int          | -       | yes   | int32     | Integer type                    |
-| array.int    | ints    | no    | []int32   | List of integers types          |
+| int          | -       | yes   | int64     | Integer type                    |
+| array.int    | ints    | no    | []int64   | List of integers types          |
 | uint         | -       | yes   | uint64    | Unsigned integer type           |
 | array.uint   | uints   | no    | []uint64  | List of unsigned integers types |
 | coin         | -       | no    | sdk.Coin  | Cosmos SDK coin type            |
@@ -123,10 +120,11 @@ with an "--ibc" flag. Note that the default module is not IBC-enabled.
 		NewScaffoldMap(),
 		NewScaffoldSingle(),
 		NewScaffoldType(),
+		NewScaffoldParams(),
+		NewScaffoldConfigs(),
 		NewScaffoldMessage(),
 		NewScaffoldQuery(),
 		NewScaffoldPacket(),
-		NewScaffoldBandchain(),
 		NewScaffoldVue(),
 		NewScaffoldReact(),
 	)
@@ -142,13 +140,12 @@ func migrationPreRunHandler(cmd *cobra.Command, args []string) error {
 	session := cliui.New()
 	defer session.End()
 
-	path := flagGetPath(cmd)
-	path, err := filepath.Abs(path)
+	cfg, _, err := getChainConfig(cmd)
 	if err != nil {
 		return err
 	}
 
-	_, appPath, err := gomodulepath.Find(path)
+	appPath, err := goModulePath(cmd)
 	if err != nil {
 		return err
 	}
@@ -166,7 +163,7 @@ func migrationPreRunHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return bufMigrationPreRunHandler(cmd, session, appPath)
+	return bufMigrationPreRunHandler(cmd, session, appPath, cfg.Build.Proto.Path)
 }
 
 func scaffoldType(
@@ -206,7 +203,12 @@ func scaffoldType(
 	session := cliui.New(cliui.StartSpinnerWithText(statusScaffolding))
 	defer session.End()
 
-	sc, err := scaffolder.New(appPath)
+	cfg, _, err := getChainConfig(cmd)
+	if err != nil {
+		return err
+	}
+
+	sc, err := scaffolder.New(cmd.Context(), appPath, cfg.Build.Proto.Path)
 	if err != nil {
 		return err
 	}
@@ -216,12 +218,21 @@ func scaffoldType(
 		return err
 	}
 
-	sm, err := sc.AddType(cmd.Context(), cacheStorage, typeName, placeholder.New(), kind, options...)
+	err = sc.AddType(cmd.Context(), typeName, kind, options...)
 	if err != nil {
 		return err
 	}
 
-	modificationsStr, err := sourceModificationToString(sm)
+	sm, err := sc.ApplyModifications()
+	if err != nil {
+		return err
+	}
+
+	if err := sc.PostScaffold(cmd.Context(), cacheStorage, false); err != nil {
+		return err
+	}
+
+	modificationsStr, err := sm.String()
 	if err != nil {
 		return err
 	}

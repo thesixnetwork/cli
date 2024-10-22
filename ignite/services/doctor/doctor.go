@@ -7,18 +7,17 @@ import (
 	"os"
 	"path"
 
-	"github.com/gobuffalo/genny/v2"
-
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/colors"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/icons"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosgen"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
-	"github.com/ignite/cli/v28/ignite/pkg/goanalysis"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
-	"github.com/ignite/cli/v28/ignite/pkg/xast"
-	"github.com/ignite/cli/v28/ignite/templates/app"
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/colors"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/icons"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosgen"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/pkg/goanalysis"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodulepath"
+	"github.com/ignite/cli/v29/ignite/pkg/xast"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/templates/app"
 )
 
 const (
@@ -88,7 +87,7 @@ func (d *Doctor) MigrateConfig(_ context.Context) error {
 			return errf(err)
 		}
 
-		if err := os.WriteFile(configPath, buf.Bytes(), 0o755); err != nil {
+		if err := os.WriteFile(configPath, buf.Bytes(), 0o600); err != nil {
 			return errf(errors.Errorf("config file migration failed: %w", err))
 		}
 
@@ -161,7 +160,12 @@ func (d *Doctor) FixDependencyTools(ctx context.Context) error {
 }
 
 func (d Doctor) createToolsFile(ctx context.Context, toolsFilename string) error {
-	pathInfo, err := gomodulepath.ParseAt(".")
+	absPath, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	pathInfo, err := gomodulepath.ParseAt(absPath)
 	if err != nil {
 		return err
 	}
@@ -176,12 +180,8 @@ func (d Doctor) createToolsFile(ctx context.Context, toolsFilename string) error
 		return err
 	}
 
-	runner := genny.WetRunner(ctx)
-	if err := runner.With(g); err != nil {
-		return err
-	}
-
-	if err := runner.Run(); err != nil {
+	runner := xgenny.NewRunner(ctx, absPath)
+	if _, err := runner.RunAndApply(g); err != nil {
 		return err
 	}
 
@@ -231,7 +231,7 @@ func (d Doctor) ensureDependencyImports(toolsFilename string) (bool, error) {
 		return false, err
 	}
 
-	err = os.WriteFile(toolsFilename, buf.Bytes(), 0o644)
+	err = os.WriteFile(toolsFilename, buf.Bytes(), 0o600)
 	if err != nil {
 		return false, err
 	}

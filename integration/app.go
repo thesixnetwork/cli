@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	v1 "github.com/ignite/cli/v28/ignite/config/chain/v1"
-	"github.com/ignite/cli/v28/ignite/pkg/availableport"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/gocmd"
-	"github.com/ignite/cli/v28/ignite/pkg/goenv"
-	"github.com/ignite/cli/v28/ignite/pkg/xurl"
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	v1 "github.com/ignite/cli/v29/ignite/config/chain/v1"
+	"github.com/ignite/cli/v29/ignite/pkg/availableport"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/goenv"
+	"github.com/ignite/cli/v29/ignite/pkg/xurl"
 )
 
 const ServeTimeout = time.Minute * 15
@@ -116,6 +116,10 @@ func (e Env) App(path string, options ...AppOption) App {
 
 func (a App) SourcePath() string {
 	return a.path
+}
+
+func (a *App) SetHomePath(homePath string) {
+	a.homePath = homePath
 }
 
 func (a *App) SetConfigPath(path string) {
@@ -278,7 +282,7 @@ func (a App) EditConfig(apply func(*chainconfig.Config)) {
 
 	bz, err := yaml.Marshal(conf)
 	require.NoError(a.env.t, err)
-	err = os.WriteFile(a.configPath, bz, 0o644)
+	err = os.WriteFile(a.configPath, bz, 0o600)
 	require.NoError(a.env.t, err)
 }
 

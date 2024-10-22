@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	envtest "github.com/ignite/cli/v28/integration"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	envtest "github.com/ignite/cli/v29/integration"
 )
 
 func TestCosmosGenScaffold(t *testing.T) {
-	t.Skip()
+	t.Skip("skip till we add a buf token into the CI")
 
 	var (
 		env = envtest.New(t)
@@ -100,19 +100,15 @@ func TestCosmosGenScaffold(t *testing.T) {
 		)),
 	))
 
-	var (
-		vueDirGenerated = filepath.Join(app.SourcePath(), "vue/src/store/generated")
-		tsDirGenerated  = filepath.Join(app.SourcePath(), "ts-client")
-	)
-	require.NoError(t, os.RemoveAll(vueDirGenerated))
+	tsDirGenerated := filepath.Join(app.SourcePath(), "ts-client")
 	require.NoError(t, os.RemoveAll(tsDirGenerated))
 
-	env.Must(env.Exec("generate vue and typescript",
+	env.Must(env.Exec("generate typescript",
 		step.NewSteps(step.New(
 			step.Exec(
 				envtest.IgniteApp,
 				"g",
-				"vuex",
+				"ts-client",
 				"--yes",
 				"--clear-cache",
 			),
@@ -125,7 +121,6 @@ func TestCosmosGenScaffold(t *testing.T) {
 		"cosmos.authz.v1beta1",
 		"cosmos.bank.v1beta1",
 		"cosmos.base.tendermint.v1beta1",
-		"cosmos.crisis.v1beta1",
 		"cosmos.distribution.v1beta1",
 		"cosmos.evidence.v1beta1",
 		"cosmos.feegrant.v1beta1",
@@ -141,17 +136,15 @@ func TestCosmosGenScaffold(t *testing.T) {
 		"cosmos.upgrade.v1beta1",
 		"cosmos.vesting.v1beta1",
 		// custom modules
-		"test.blog.blog",
-		"test.blog.withmsg",
-		"test.blog.withoutmsg",
+		"blog.blog.v1",
+		"blog.withmsg.v1",
+		"blog.withoutmsg.v1",
 	}
 
 	for _, mod := range expectedModules {
-		for _, dir := range []string{vueDirGenerated, tsDirGenerated} {
-			_, err := os.Stat(filepath.Join(dir, mod))
-			if assert.False(t, os.IsNotExist(err), "missing module %q in %s", mod, dir) {
-				assert.NoError(t, err)
-			}
+		_, err := os.Stat(filepath.Join(tsDirGenerated, mod))
+		if assert.False(t, os.IsNotExist(err), "missing module %q in %s", mod, tsDirGenerated) {
+			assert.NoError(t, err)
 		}
 	}
 }

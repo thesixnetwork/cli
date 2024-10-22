@@ -11,7 +11,7 @@ Ignite CLI offers everything you need to scaffold, test, build, and launch your 
 
 **Synopsis**
 
-Ignite CLI is a tool for creating sovereign blockchains built with Cosmos SDK, the world’s
+Ignite CLI is a tool for creating sovereign blockchains built with Cosmos SDK, the world's
 most popular modular blockchain framework. Ignite CLI offers everything you need to scaffold,
 test, build, and launch your blockchain.
 
@@ -31,14 +31,13 @@ To get started, create a blockchain:
 * [ignite account](#ignite-account)	 - Create, delete, and show Ignite accounts
 * [ignite app](#ignite-app)	 - Create and manage Ignite Apps
 * [ignite chain](#ignite-chain)	 - Build, init and start a blockchain node
-* [ignite completion](#ignite-completion)	 - Generate the autocompletion script for the specified shell
+* [ignite completion](#ignite-completion)	 - Generates shell completion script.
 * [ignite docs](#ignite-docs)	 - Show Ignite CLI docs
 * [ignite generate](#ignite-generate)	 - Generate clients, API docs from source code
 * [ignite network](#ignite-network)	 - Launch a blockchain in production
-* [ignite node](#ignite-node)	 - Make requests to a live blockchain node
 * [ignite relayer](#ignite-relayer)	 - Connect blockchains with an IBC relayer
 * [ignite scaffold](#ignite-scaffold)	 - Create a new blockchain, module, message, query, and more
-* [ignite tools](#ignite-tools)	 - Tools for advanced users
+* [ignite testnet](#ignite-testnet)	 - Start a testnet local
 * [ignite version](#ignite-version)	 - Print the current build information
 
 
@@ -50,7 +49,7 @@ Create, delete, and show Ignite accounts
 
 Commands for managing Ignite accounts. An Ignite account is a private/public
 keypair stored in a keyring. Currently Ignite accounts are used when interacting
-with Ignite relayer commands and when using "ignite network" commands.
+with Ignite Apps (namely ignite relayer, ignite network and ignite connect).
 
 Note: Ignite account commands are not for managing your chain's keys and accounts. Use
 you chain's binary to manage accounts from "config.yml". For example, if your
@@ -508,6 +507,7 @@ chain.
 * [ignite chain debug](#ignite-chain-debug)	 - Launch a debugger for a blockchain app
 * [ignite chain faucet](#ignite-chain-faucet)	 - Send coins to an account
 * [ignite chain init](#ignite-chain-init)	 - Initialize your chain
+* [ignite chain lint](#ignite-chain-lint)	 - Lint codebase using golangci-lint
 * [ignite chain serve](#ignite-chain-serve)	 - Start a blockchain node in development
 * [ignite chain simulate](#ignite-chain-simulate)	 - Run simulation testing for the blockchain
 
@@ -578,7 +578,7 @@ ignite chain build [flags]
 **Options**
 
 ```
-      --build.tags strings        parameters to build the chain binary (default [app_v1])
+      --build.tags strings        parameters to build the chain binary
       --check-dependencies        verify that cached dependencies have not been modified since they were downloaded
       --clear-cache               clear the build cache (advanced)
       --debug                     build a debug binary
@@ -766,7 +766,7 @@ ignite chain init [flags]
 **Options**
 
 ```
-      --build.tags strings   parameters to build the chain binary (default [app_v1])
+      --build.tags strings   parameters to build the chain binary
       --check-dependencies   verify that cached dependencies have not been modified since they were downloaded
       --clear-cache          clear the build cache (advanced)
       --debug                build a debug binary
@@ -774,6 +774,37 @@ ignite chain init [flags]
       --home string          directory where the blockchain node is initialized
   -p, --path string          path of the app (default ".")
       --skip-proto           skip file generation from proto
+  -v, --verbose              verbose output
+```
+
+**Options inherited from parent commands**
+
+```
+  -c, --config string   path to Ignite config file (default: ./config.yml)
+  -y, --yes             answers interactive yes/no questions with yes
+```
+
+**SEE ALSO**
+
+* [ignite chain](#ignite-chain)	 - Build, init and start a blockchain node
+
+
+## ignite chain lint
+
+Lint codebase using golangci-lint
+
+**Synopsis**
+
+The lint command runs the golangci-lint tool to lint the codebase.
+
+```
+ignite chain lint [flags]
+```
+
+**Options**
+
+```
+  -h, --help   help for lint
 ```
 
 **Options inherited from parent commands**
@@ -835,7 +866,7 @@ ignite chain serve [flags]
 **Options**
 
 ```
-      --build.tags strings   parameters to build the chain binary (default [app_v1])
+      --build.tags strings   parameters to build the chain binary
       --check-dependencies   verify that cached dependencies have not been modified since they were downloaded
       --clear-cache          clear the build cache (advanced)
   -f, --force-reset          force reset of the app state on start and every source change
@@ -889,10 +920,7 @@ ignite chain simulate [flags]
       --numBlocks int             number of new blocks to simulate from the initial block height (default 200)
       --params string             custom simulation params file which overrides any random params; cannot be used with genesis
       --period uint               run slow invariants only once every period assertions
-      --printAllInvariants        print all invariants if a broken invariant is found
       --seed int                  simulation random seed (default 42)
-      --simulateEveryOperation    run slow invariants every operation
-  -v, --verbose                   verbose log output
 ```
 
 **Options inherited from parent commands**
@@ -909,13 +937,11 @@ ignite chain simulate [flags]
 
 ## ignite completion
 
-Generate the autocompletion script for the specified shell
+Generates shell completion script.
 
-**Synopsis**
-
-Generate the autocompletion script for ignite for the specified shell.
-See each sub-command's help for details on how to use the generated script.
-
+```
+ignite completion [bash|zsh|fish|powershell] [flags]
+```
 
 **Options**
 
@@ -926,167 +952,6 @@ See each sub-command's help for details on how to use the generated script.
 **SEE ALSO**
 
 * [ignite](#ignite)	 - Ignite CLI offers everything you need to scaffold, test, build, and launch your blockchain
-* [ignite completion bash](#ignite-completion-bash)	 - Generate the autocompletion script for bash
-* [ignite completion fish](#ignite-completion-fish)	 - Generate the autocompletion script for fish
-* [ignite completion powershell](#ignite-completion-powershell)	 - Generate the autocompletion script for powershell
-* [ignite completion zsh](#ignite-completion-zsh)	 - Generate the autocompletion script for zsh
-
-
-## ignite completion bash
-
-Generate the autocompletion script for bash
-
-**Synopsis**
-
-Generate the autocompletion script for the bash shell.
-
-This script depends on the 'bash-completion' package.
-If it is not installed already, you can install it via your OS's package manager.
-
-To load completions in your current shell session:
-
-	source <(ignite completion bash)
-
-To load completions for every new session, execute once:
-
-**#### Linux:**
-
-	ignite completion bash > /etc/bash_completion.d/ignite
-
-**#### macOS:**
-
-	ignite completion bash > $(brew --prefix)/etc/bash_completion.d/ignite
-
-You will need to start a new shell for this setup to take effect.
-
-
-```
-ignite completion bash
-```
-
-**Options**
-
-```
-  -h, --help              help for bash
-      --no-descriptions   disable completion descriptions
-```
-
-**SEE ALSO**
-
-* [ignite completion](#ignite-completion)	 - Generate the autocompletion script for the specified shell
-
-
-## ignite completion fish
-
-Generate the autocompletion script for fish
-
-**Synopsis**
-
-Generate the autocompletion script for the fish shell.
-
-To load completions in your current shell session:
-
-	ignite completion fish | source
-
-To load completions for every new session, execute once:
-
-	ignite completion fish > ~/.config/fish/completions/ignite.fish
-
-You will need to start a new shell for this setup to take effect.
-
-
-```
-ignite completion fish [flags]
-```
-
-**Options**
-
-```
-  -h, --help              help for fish
-      --no-descriptions   disable completion descriptions
-```
-
-**SEE ALSO**
-
-* [ignite completion](#ignite-completion)	 - Generate the autocompletion script for the specified shell
-
-
-## ignite completion powershell
-
-Generate the autocompletion script for powershell
-
-**Synopsis**
-
-Generate the autocompletion script for powershell.
-
-To load completions in your current shell session:
-
-	ignite completion powershell | Out-String | Invoke-Expression
-
-To load completions for every new session, add the output of the above command
-to your powershell profile.
-
-
-```
-ignite completion powershell [flags]
-```
-
-**Options**
-
-```
-  -h, --help              help for powershell
-      --no-descriptions   disable completion descriptions
-```
-
-**SEE ALSO**
-
-* [ignite completion](#ignite-completion)	 - Generate the autocompletion script for the specified shell
-
-
-## ignite completion zsh
-
-Generate the autocompletion script for zsh
-
-**Synopsis**
-
-Generate the autocompletion script for the zsh shell.
-
-If shell completion is not already enabled in your environment you will need
-to enable it.  You can execute the following once:
-
-	echo "autoload -U compinit; compinit" >> ~/.zshrc
-
-To load completions in your current shell session:
-
-	source <(ignite completion zsh)
-
-To load completions for every new session, execute once:
-
-**#### Linux:**
-
-	ignite completion zsh > "${fpath[1]}/_ignite"
-
-**#### macOS:**
-
-	ignite completion zsh > $(brew --prefix)/share/zsh/site-functions/_ignite
-
-You will need to start a new shell for this setup to take effect.
-
-
-```
-ignite completion zsh [flags]
-```
-
-**Options**
-
-```
-  -h, --help              help for zsh
-      --no-descriptions   disable completion descriptions
-```
-
-**SEE ALSO**
-
-* [ignite completion](#ignite-completion)	 - Generate the autocompletion script for the specified shell
 
 
 ## ignite docs
@@ -1140,7 +1005,6 @@ meant to be edited by hand.
 * [ignite generate openapi](#ignite-generate-openapi)	 - OpenAPI spec for your chain
 * [ignite generate proto-go](#ignite-generate-proto-go)	 - Compile protocol buffer files to Go source code required by Cosmos SDK
 * [ignite generate ts-client](#ignite-generate-ts-client)	 - TypeScript frontend client
-* [ignite generate vuex](#ignite-generate-vuex)	 - *DEPRECATED* TypeScript frontend client and Vuex stores
 
 
 ## ignite generate composables
@@ -1292,35 +1156,6 @@ ignite generate ts-client [flags]
   -h, --help            help for ts-client
   -o, --output string   TypeScript client output path
       --use-cache       use build cache to speed-up generation
-  -y, --yes             answers interactive yes/no questions with yes
-```
-
-**Options inherited from parent commands**
-
-```
-      --clear-cache           clear the build cache (advanced)
-      --enable-proto-vendor   enable proto package vendor for missing Buf dependencies
-  -p, --path string           path of the app (default ".")
-```
-
-**SEE ALSO**
-
-* [ignite generate](#ignite-generate)	 - Generate clients, API docs from source code
-
-
-## ignite generate vuex
-
-*DEPRECATED* TypeScript frontend client and Vuex stores
-
-```
-ignite generate vuex [flags]
-```
-
-**Options**
-
-```
-  -h, --help            help for vuex
-  -o, --output string   Vuex store output path
   -y, --yes             answers interactive yes/no questions with yes
 ```
 
@@ -2785,228 +2620,13 @@ ignite network version [flags]
 * [ignite network](#ignite-network)	 - Launch a blockchain in production
 
 
-## ignite node
-
-Make requests to a live blockchain node
-
-**Options**
-
-```
-  -h, --help          help for node
-      --node string   <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite](#ignite)	 - Ignite CLI offers everything you need to scaffold, test, build, and launch your blockchain
-* [ignite node query](#ignite-node-query)	 - Querying subcommands
-* [ignite node tx](#ignite-node-tx)	 - Transactions subcommands
-
-
-## ignite node query
-
-Querying subcommands
-
-**Options**
-
-```
-  -h, --help   help for query
-```
-
-**Options inherited from parent commands**
-
-```
-      --node string   <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node](#ignite-node)	 - Make requests to a live blockchain node
-* [ignite node query bank](#ignite-node-query-bank)	 - Querying commands for the bank module
-* [ignite node query tx](#ignite-node-query-tx)	 - Query for transaction by hash
-
-
-## ignite node query bank
-
-Querying commands for the bank module
-
-**Options**
-
-```
-  -h, --help   help for bank
-```
-
-**Options inherited from parent commands**
-
-```
-      --node string   <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node query](#ignite-node-query)	 - Querying subcommands
-* [ignite node query bank balances](#ignite-node-query-bank-balances)	 - Query for account balances by account name or address
-
-
-## ignite node query bank balances
-
-Query for account balances by account name or address
-
-```
-ignite node query bank balances [from_account_or_address] [flags]
-```
-
-**Options**
-
-```
-      --address-prefix string    account address prefix (default "cosmos")
-      --count-total              count total number of records in all balances to query for
-  -h, --help                     help for balances
-      --home string              directory where the blockchain node is initialized
-      --keyring-backend string   keyring backend to store your account keys (default "test")
-      --keyring-dir string       accounts keyring directory (default "/home/runner/.ignite/accounts")
-      --limit uint               pagination limit of all balances to query for (default 100)
-      --offset uint              pagination offset of all balances to query for
-      --page uint                pagination page of all balances to query for. This sets offset to a multiple of limit (default 1)
-      --page-key string          pagination page-key of all balances to query for
-      --reverse                  results are sorted in descending order
-```
-
-**Options inherited from parent commands**
-
-```
-      --node string   <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node query bank](#ignite-node-query-bank)	 - Querying commands for the bank module
-
-
-## ignite node query tx
-
-Query for transaction by hash
-
-```
-ignite node query tx [hash] [flags]
-```
-
-**Options**
-
-```
-  -h, --help   help for tx
-```
-
-**Options inherited from parent commands**
-
-```
-      --node string   <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node query](#ignite-node-query)	 - Querying subcommands
-
-
-## ignite node tx
-
-Transactions subcommands
-
-**Options**
-
-```
-      --address-prefix string    account address prefix (default "cosmos")
-      --fees string              fees to pay along with transaction; eg: 10uatom
-      --gas string               gas limit to set per-transaction; set to "auto" to calculate sufficient gas automatically (default "auto")
-      --gas-adjustment float     gas adjustment to set per-transaction
-      --gas-prices string        gas prices in decimal format to determine the transaction fee (e.g. 0.1uatom)
-      --generate-only            build an unsigned transaction and write it to STDOUT
-  -h, --help                     help for tx
-      --home string              directory where the blockchain node is initialized
-      --keyring-backend string   keyring backend to store your account keys (default "test")
-      --keyring-dir string       accounts keyring directory (default "/home/runner/.ignite/accounts")
-```
-
-**Options inherited from parent commands**
-
-```
-      --node string   <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node](#ignite-node)	 - Make requests to a live blockchain node
-* [ignite node tx bank](#ignite-node-tx-bank)	 - Bank transaction subcommands
-
-
-## ignite node tx bank
-
-Bank transaction subcommands
-
-**Options**
-
-```
-  -h, --help   help for bank
-```
-
-**Options inherited from parent commands**
-
-```
-      --address-prefix string    account address prefix (default "cosmos")
-      --fees string              fees to pay along with transaction; eg: 10uatom
-      --gas string               gas limit to set per-transaction; set to "auto" to calculate sufficient gas automatically (default "auto")
-      --gas-adjustment float     gas adjustment to set per-transaction
-      --gas-prices string        gas prices in decimal format to determine the transaction fee (e.g. 0.1uatom)
-      --generate-only            build an unsigned transaction and write it to STDOUT
-      --home string              directory where the blockchain node is initialized
-      --keyring-backend string   keyring backend to store your account keys (default "test")
-      --keyring-dir string       accounts keyring directory (default "/home/runner/.ignite/accounts")
-      --node string              <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node tx](#ignite-node-tx)	 - Transactions subcommands
-* [ignite node tx bank send](#ignite-node-tx-bank-send)	 - Send funds from one account to another.
-
-
-## ignite node tx bank send
-
-Send funds from one account to another.
-
-```
-ignite node tx bank send [from_account_or_address] [to_account_or_address] [amount] [flags]
-```
-
-**Options**
-
-```
-  -h, --help   help for send
-```
-
-**Options inherited from parent commands**
-
-```
-      --address-prefix string    account address prefix (default "cosmos")
-      --fees string              fees to pay along with transaction; eg: 10uatom
-      --gas string               gas limit to set per-transaction; set to "auto" to calculate sufficient gas automatically (default "auto")
-      --gas-adjustment float     gas adjustment to set per-transaction
-      --gas-prices string        gas prices in decimal format to determine the transaction fee (e.g. 0.1uatom)
-      --generate-only            build an unsigned transaction and write it to STDOUT
-      --home string              directory where the blockchain node is initialized
-      --keyring-backend string   keyring backend to store your account keys (default "test")
-      --keyring-dir string       accounts keyring directory (default "/home/runner/.ignite/accounts")
-      --node string              <host>:<port> to tendermint rpc interface for this chain (default "https://rpc.cosmos.directory:443/cosmoshub")
-```
-
-**SEE ALSO**
-
-* [ignite node tx bank](#ignite-node-tx-bank)	 - Bank transaction subcommands
-
-
 ## ignite relayer
 
 Connect blockchains with an IBC relayer
+
+```
+ignite relayer [flags]
+```
 
 **Options**
 
@@ -3017,71 +2637,6 @@ Connect blockchains with an IBC relayer
 **SEE ALSO**
 
 * [ignite](#ignite)	 - Ignite CLI offers everything you need to scaffold, test, build, and launch your blockchain
-* [ignite relayer configure](#ignite-relayer-configure)	 - Configure source and target chains for relaying
-* [ignite relayer connect](#ignite-relayer-connect)	 - Link chains associated with paths and start relaying tx packets in between
-
-
-## ignite relayer configure
-
-Configure source and target chains for relaying
-
-```
-ignite relayer configure [flags]
-```
-
-**Options**
-
-```
-  -a, --advanced                  advanced configuration options for custom IBC modules
-  -h, --help                      help for configure
-      --keyring-backend string    keyring backend to store your account keys (default "test")
-      --keyring-dir string        accounts keyring directory (default "/home/runner/.ignite/accounts")
-      --ordered                   set the channel as ordered
-  -r, --reset                     reset the relayer config
-      --source-account string     source Account
-      --source-client-id string   use a custom client id for source
-      --source-faucet string      faucet address of the source chain
-      --source-gaslimit int       gas limit used for transactions on source chain
-      --source-gasprice string    gas price used for transactions on source chain
-      --source-port string        IBC port ID on the source chain
-      --source-prefix string      address prefix of the source chain
-      --source-rpc string         RPC address of the source chain
-      --source-version string     module version on the source chain
-      --target-account string     target Account
-      --target-client-id string   use a custom client id for target
-      --target-faucet string      faucet address of the target chain
-      --target-gaslimit int       gas limit used for transactions on target chain
-      --target-gasprice string    gas price used for transactions on target chain
-      --target-port string        IBC port ID on the target chain
-      --target-prefix string      address prefix of the target chain
-      --target-rpc string         RPC address of the target chain
-      --target-version string     module version on the target chain
-```
-
-**SEE ALSO**
-
-* [ignite relayer](#ignite-relayer)	 - Connect blockchains with an IBC relayer
-
-
-## ignite relayer connect
-
-Link chains associated with paths and start relaying tx packets in between
-
-```
-ignite relayer connect [<path>,...] [flags]
-```
-
-**Options**
-
-```
-  -h, --help                     help for connect
-      --keyring-backend string   keyring backend to store your account keys (default "test")
-      --keyring-dir string       accounts keyring directory (default "/home/runner/.ignite/accounts")
-```
-
-**SEE ALSO**
-
-* [ignite relayer](#ignite-relayer)	 - Connect blockchains with an IBC relayer
 
 
 ## ignite scaffold
@@ -3155,11 +2710,13 @@ with an "--ibc" flag. Note that the default module is not IBC-enabled.
 
 * [ignite](#ignite)	 - Ignite CLI offers everything you need to scaffold, test, build, and launch your blockchain
 * [ignite scaffold chain](#ignite-scaffold-chain)	 - New Cosmos SDK blockchain
+* [ignite scaffold configs](#ignite-scaffold-configs)	 - Configs for a custom Cosmos SDK module
 * [ignite scaffold list](#ignite-scaffold-list)	 - CRUD for data stored as an array
 * [ignite scaffold map](#ignite-scaffold-map)	 - CRUD for data stored as key-value pairs
 * [ignite scaffold message](#ignite-scaffold-message)	 - Message to perform state transition on the blockchain
 * [ignite scaffold module](#ignite-scaffold-module)	 - Custom Cosmos SDK module
 * [ignite scaffold packet](#ignite-scaffold-packet)	 - Message for sending an IBC packet
+* [ignite scaffold params](#ignite-scaffold-params)	 - Parameters for a custom Cosmos SDK module
 * [ignite scaffold query](#ignite-scaffold-query)	 - Query for fetching data from a blockchain
 * [ignite scaffold react](#ignite-scaffold-react)	 - React web app template
 * [ignite scaffold single](#ignite-scaffold-single)	 - CRUD for data stored in a single location
@@ -3222,13 +2779,55 @@ ignite scaffold chain [name] [flags]
 **Options**
 
 ```
-      --address-prefix string   account address prefix (default "cosmos")
-      --clear-cache             clear the build cache (advanced)
-  -h, --help                    help for chain
-      --no-module               create a project without a default module
-      --params strings          add default module parameters
-  -p, --path string             create a project in a specific path
-      --skip-git                skip Git repository initialization
+      --address-prefix string    account address prefix (default "cosmos")
+      --clear-cache              clear the build cache (advanced)
+  -h, --help                     help for chain
+      --minimal                  create a minimal blockchain (with the minimum required Cosmos SDK modules)
+      --module-configs strings   add module configs
+      --no-module                create a project without a default module
+      --params strings           add default module parameters
+  -p, --path string              create a project in a specific path
+      --proto-dir string         chain proto directory (default "proto")
+      --skip-git                 skip Git repository initialization
+      --skip-proto               skip proto generation
+```
+
+**SEE ALSO**
+
+* [ignite scaffold](#ignite-scaffold)	 - Create a new blockchain, module, message, query, and more
+
+
+## ignite scaffold configs
+
+Configs for a custom Cosmos SDK module
+
+**Synopsis**
+
+Scaffold a new config for a Cosmos SDK module.
+
+A Cosmos SDK module can have configurations. An example of a config is "address prefix" of the
+"auth" module. A config can be scaffolded into a module using the "--module-configs" into
+the scaffold module command or using the "scaffold configs" command. By default 
+configs are of type "string", but you can specify a type for each config. For example:
+
+	ignite scaffold configs foo baz:uint bar:bool
+
+Refer to Cosmos SDK documentation to learn more about modules, dependencies and
+configs.
+
+
+```
+ignite scaffold configs [configs]... [flags]
+```
+
+**Options**
+
+```
+      --clear-cache     clear the build cache (advanced)
+  -h, --help            help for configs
+      --module string   module to add the query into (default: app's main module)
+  -p, --path string     path of the app (default ".")
+  -y, --yes             answers interactive yes/no questions with yes
 ```
 
 **SEE ALSO**
@@ -3381,14 +2980,7 @@ for the "hello" key.
 
 	blogd q blog show-post hello
 
-To customize the index, use the "--index" flag. Multiple indices can be
-provided, which simplifies querying values. For example:
-
-	ignite scaffold map product price desc --index category,guid
-
-With this command, you would get a "Product" value indexed by both a category
-and a GUID (globally unique ID). This will let you programmatically fetch
-product values that have the same category but are using different GUIDs.
+By default, the index is called "index", to customize the index, use the "--index" flag.
 
 Since the behavior of "list" and "map" scaffolding is very similar, you can use
 the "--no-message", "--module", "--signer" flags as well as the colon syntax for
@@ -3406,7 +2998,7 @@ ignite scaffold map NAME [field]... [flags]
 ```
       --clear-cache     clear the build cache (advanced)
   -h, --help            help for map
-      --index strings   fields that index the value (default [index])
+      --index string    field that index the value (default "index")
       --module string   specify which module to generate code in
       --no-message      skip generating message handling logic
       --no-simulation   skip simulation logic
@@ -3569,15 +3161,15 @@ ignite scaffold module [name] [flags]
 **Options**
 
 ```
-      --clear-cache            clear the build cache (advanced)
-      --dep strings            add a dependency on another module
-  -h, --help                   help for module
-      --ibc                    add IBC functionality
-      --ordering string        channel ordering of the IBC module [none|ordered|unordered] (default "none")
-      --params strings         add module parameters
-  -p, --path string            path of the app (default ".")
-      --require-registration   fail if module can't be registered
-  -y, --yes                    answers interactive yes/no questions with yes
+      --clear-cache              clear the build cache (advanced)
+      --dep strings              add a dependency on another module
+  -h, --help                     help for module
+      --module-configs strings   add module configs
+      --ordering string          channel ordering of the IBC module [none|ordered|unordered] (default "none")
+      --params strings           add module parameters
+  -p, --path string              path of the app (default ".")
+      --require-registration     fail if module can't be registered
+  -y, --yes                      answers interactive yes/no questions with yes
 ```
 
 **SEE ALSO**
@@ -3607,6 +3199,46 @@ ignite scaffold packet [packetName] [field1] [field2] ... --module [moduleName] 
       --no-message      disable send message scaffolding
   -p, --path string     path of the app (default ".")
       --signer string   label for the message signer (default: creator)
+  -y, --yes             answers interactive yes/no questions with yes
+```
+
+**SEE ALSO**
+
+* [ignite scaffold](#ignite-scaffold)	 - Create a new blockchain, module, message, query, and more
+
+
+## ignite scaffold params
+
+Parameters for a custom Cosmos SDK module
+
+**Synopsis**
+
+Scaffold a new parameter for a Cosmos SDK module.
+
+A Cosmos SDK module can have parameters (or "params"). Params are values that
+can be set at the genesis of the blockchain and can be modified while the
+blockchain is running. An example of a param is "Inflation rate change" of the
+"mint" module. A params can be scaffolded into a module using the "--params" into
+the scaffold module command or using the "scaffold params" command. By default 
+params are of type "string", but you can specify a type for each param. For example:
+
+	ignite scaffold params foo baz:uint bar:bool
+
+Refer to Cosmos SDK documentation to learn more about modules, dependencies and
+params.
+
+
+```
+ignite scaffold params [param]... [flags]
+```
+
+**Options**
+
+```
+      --clear-cache     clear the build cache (advanced)
+  -h, --help            help for params
+      --module string   module to add the query into. Default: app's main module
+  -p, --path string     path of the app (default ".")
   -y, --yes             answers interactive yes/no questions with yes
 ```
 
@@ -3721,8 +3353,8 @@ Currently supports:
 | string       | -       | yes   | string    | Text type                       |
 | array.string | strings | no    | []string  | List of text type               |
 | bool         | -       | yes   | bool      | Boolean type                    |
-| int          | -       | yes   | int32     | Integer type                    |
-| array.int    | ints    | no    | []int32   | List of integers types          |
+| int          | -       | yes   | int64     | Integer type                    |
+| array.int    | ints    | no    | []int64   | List of integers types          |
 | uint         | -       | yes   | uint64    | Unsigned integer type           |
 | array.uint   | uints   | no    | []uint64  | List of unsigned integers types |
 | coin         | -       | no    | sdk.Coin  | Cosmos SDK coin type            |
@@ -3785,72 +3417,58 @@ ignite scaffold vue [flags]
 * [ignite scaffold](#ignite-scaffold)	 - Create a new blockchain, module, message, query, and more
 
 
-## ignite tools
+## ignite testnet
 
-Tools for advanced users
+Start a testnet local
+
+**Synopsis**
+
+Start a testnet local
+
+
 
 **Options**
 
 ```
-  -h, --help   help for tools
+  -h, --help   help for testnet
 ```
 
 **SEE ALSO**
 
 * [ignite](#ignite)	 - Ignite CLI offers everything you need to scaffold, test, build, and launch your blockchain
-* [ignite tools ibc-relayer](#ignite-tools-ibc-relayer)	 - TypeScript implementation of an IBC relayer
-* [ignite tools ibc-setup](#ignite-tools-ibc-setup)	 - Collection of commands to quickly setup a relayer
+* [ignite testnet in-place](#ignite-testnet-in-place)	 - Create and start a testnet from current local net state
 
 
-## ignite tools ibc-relayer
+## ignite testnet in-place
 
-TypeScript implementation of an IBC relayer
+Create and start a testnet from current local net state
 
-```
-ignite tools ibc-relayer [--] [...] [flags]
-```
+**Synopsis**
 
-**Examples**
-
-```
-ignite tools ibc-relayer -- -h
-```
-
-**Options**
+Testnet in-place command is used to create and start a testnet from current local net state(including mainnet).
+After using this command in the repo containing the config.yml file, the network will start.
+We can create a testnet from the local network state and mint additional coins for the desired accounts from the config.yml file.
 
 ```
-  -h, --help   help for ibc-relayer
-```
-
-**SEE ALSO**
-
-* [ignite tools](#ignite-tools)	 - Tools for advanced users
-
-
-## ignite tools ibc-setup
-
-Collection of commands to quickly setup a relayer
-
-```
-ignite tools ibc-setup [--] [...] [flags]
-```
-
-**Examples**
-
-```
-ignite tools ibc-setup -- -h
-ignite tools ibc-setup -- init --src relayer_test_1 --dest relayer_test_2
+ignite testnet in-place [flags]
 ```
 
 **Options**
 
 ```
-  -h, --help   help for ibc-setup
+      --check-dependencies   verify that cached dependencies have not been modified since they were downloaded
+      --clear-cache          clear the build cache (advanced)
+  -h, --help                 help for in-place
+      --home string          directory where the blockchain node is initialized
+  -p, --path string          path of the app (default ".")
+      --quit-on-fail         quit program if the app fails to start
+      --skip-proto           skip file generation from proto
+  -v, --verbose              verbose output
 ```
 
 **SEE ALSO**
 
-* [ignite tools](#ignite-tools)	 - Tools for advanced users
+* [ignite testnet](#ignite-testnet)	 - Start a testnet local
 
 
 ## ignite version

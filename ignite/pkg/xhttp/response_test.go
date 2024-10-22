@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 func TestResponseJSON(t *testing.T) {
@@ -17,12 +17,14 @@ func TestResponseJSON(t *testing.T) {
 	data := map[string]interface{}{"a": 1}
 	require.NoError(t, ResponseJSON(w, http.StatusCreated, data))
 	resp := w.Result()
+	defer resp.Body.Close() // Ensure the response body is closed
 
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 
 	body, _ := io.ReadAll(resp.Body)
-	dataJSON, _ := json.Marshal(data)
+	dataJSON, err := json.Marshal(data)
+	require.NoError(t, err)
 	require.Equal(t, dataJSON, body)
 }
 

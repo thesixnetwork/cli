@@ -1,22 +1,23 @@
 package singleton
 
 import (
+	"crypto/rand"
 	"embed"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"path/filepath"
 	"strings"
 
 	"github.com/emicklei/proto"
 	"github.com/gobuffalo/genny/v2"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/templates/module"
-	"github.com/ignite/cli/v28/ignite/templates/typed"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodulepath"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/templates/module"
+	"github.com/ignite/cli/v29/ignite/templates/typed"
 )
 
 var (
@@ -52,8 +53,9 @@ func NewGenerator(replacer placeholder.Replacer, opts *typed.Options) (*genny.Ge
 		)
 	)
 
-	g.RunFn(typesKeyModify(opts))
 	g.RunFn(protoRPCModify(opts))
+	g.RunFn(typesKeyModify(opts))
+	g.RunFn(keeperModify(replacer, opts))
 	g.RunFn(clientCliQueryModify(replacer, opts))
 	g.RunFn(genesisProtoModify(opts))
 	g.RunFn(genesisTypesModify(replacer, opts))
@@ -82,6 +84,7 @@ func NewGenerator(replacer placeholder.Replacer, opts *typed.Options) (*genny.Ge
 	return g, typed.Box(componentTemplate, opts, g)
 }
 
+// typesKeyModify modifies the keys.go file to add a new collection prefix.
 func typesKeyModify(opts *typed.Options) genny.RunFn {
 	return func(r *genny.Runner) error {
 		path := filepath.Join(opts.AppPath, "x", opts.ModuleName, "types/keys.go")
@@ -90,10 +93,46 @@ func typesKeyModify(opts *typed.Options) genny.RunFn {
 			return err
 		}
 		content := f.String() + fmt.Sprintf(`
-const (
-	%[1]vKey= "%[1]v/value/"
+var (
+	%[1]vKey= collections.NewPrefix("%[2]v/value/")
 )
-`, opts.TypeName.UpperCamel)
+`,
+			opts.TypeName.UpperCamel,
+			opts.TypeName.LowerCamel,
+		)
+		newFile := genny.NewFileS(path, content)
+		return r.File(newFile)
+	}
+}
+
+// keeperModify modifies the keeper to add a new collections item type.
+func keeperModify(replacer placeholder.Replacer, opts *typed.Options) genny.RunFn {
+	return func(r *genny.Runner) error {
+		path := filepath.Join(opts.AppPath, "x", opts.ModuleName, "keeper/keeper.go")
+		f, err := r.Disk.Find(path)
+		if err != nil {
+			return err
+		}
+
+		templateKeeperType := `%[2]v collections.Item[types.%[2]v]
+	%[1]v`
+		replacementModuleType := fmt.Sprintf(
+			templateKeeperType,
+			typed.PlaceholderCollectionType,
+			opts.TypeName.UpperCamel,
+		)
+		content := replacer.Replace(f.String(), typed.PlaceholderCollectionType, replacementModuleType)
+
+		templateKeeperInstantiate := `%[2]v: collections.NewItem(sb, types.%[2]vKey, "%[3]v", codec.CollValue[types.%[2]v](cdc)),
+	%[1]v`
+		replacementInstantiate := fmt.Sprintf(
+			templateKeeperInstantiate,
+			typed.PlaceholderCollectionInstantiate,
+			opts.TypeName.UpperCamel,
+			opts.TypeName.LowerCamel,
+		)
+		content = replacer.Replace(content, typed.PlaceholderCollectionInstantiate, replacementInstantiate)
+
 		newFile := genny.NewFileS(path, content)
 		return r.File(newFile)
 	}
@@ -105,7 +144,7 @@ const (
 //   - Existence of a service with name "Query". Adds the rpc's there.
 func protoRPCModify(opts *typed.Options) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := opts.ProtoPath("query.proto")
+		path := opts.ProtoFile("query.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -128,7 +167,7 @@ func protoRPCModify(opts *typed.Options) genny.RunFn {
 		appModulePath := gomodulepath.ExtractAppPath(opts.ModulePath)
 		typenameUpper := opts.TypeName.UpperCamel
 		rpcQueryGet := protoutil.NewRPC(
-			typenameUpper,
+			fmt.Sprintf("Get%s", typenameUpper),
 			fmt.Sprintf("QueryGet%sRequest", typenameUpper),
 			fmt.Sprintf("QueryGet%sResponse", typenameUpper),
 			protoutil.WithRPCOptions(
@@ -168,9 +207,10 @@ func clientCliQueryModify(replacer placeholder.Replacer, opts *typed.Options) ge
 		}
 
 		template := `{
-			RpcMethod: "%[2]v",
-			Use: "show-%[3]v",
-			Short: "show %[4]v",
+			RpcMethod: "Get%[2]v",
+			Use: "get-%[3]v",
+			Short: "Gets a %[4]v",
+			Alias: []string{"show-%[3]v"},
 		},
 		%[1]v`
 		replacement := fmt.Sprintf(
@@ -192,7 +232,7 @@ func clientCliQueryModify(replacer placeholder.Replacer, opts *typed.Options) ge
 //   - Existence of a message with name "GenesisState". Adds the field there.
 func genesisProtoModify(opts *typed.Options) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := opts.ProtoPath("genesis.proto")
+		path := opts.ProtoFile("genesis.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -233,8 +273,6 @@ func genesisTypesModify(replacer placeholder.Replacer, opts *typed.Options) genn
 			return err
 		}
 
-		content := typed.PatchGenesisTypeImport(replacer, f.String())
-
 		templateTypesDefault := `%[2]v: nil,
 %[1]v`
 		replacementTypesDefault := fmt.Sprintf(
@@ -242,7 +280,7 @@ func genesisTypesModify(replacer placeholder.Replacer, opts *typed.Options) genn
 			typed.PlaceholderGenesisTypesDefault,
 			opts.TypeName.UpperCamel,
 		)
-		content = replacer.Replace(content, typed.PlaceholderGenesisTypesDefault, replacementTypesDefault)
+		content := replacer.Replace(f.String(), typed.PlaceholderGenesisTypesDefault, replacementTypesDefault)
 
 		newFile := genny.NewFileS(path, content)
 		return r.File(newFile)
@@ -260,7 +298,11 @@ func genesisTestsModify(replacer placeholder.Replacer, opts *typed.Options) genn
 		// Create a fields
 		sampleFields := ""
 		for _, field := range opts.Fields {
-			sampleFields += field.GenesisArgs(rand.Intn(100) + 1)
+			n, err := rand.Int(rand.Reader, big.NewInt(100))
+			if err != nil {
+				return err
+			}
+			sampleFields += field.GenesisArgs(int(n.Int64()) + 1)
 		}
 
 		templateState := `%[2]v: &types.%[2]v{
@@ -299,7 +341,11 @@ func genesisTypesTestsModify(replacer placeholder.Replacer, opts *typed.Options)
 		// Create a fields
 		sampleFields := ""
 		for _, field := range opts.Fields {
-			sampleFields += field.GenesisArgs(rand.Intn(100) + 1)
+			n, err := rand.Int(rand.Reader, big.NewInt(100))
+			if err != nil {
+				return err
+			}
+			sampleFields += field.GenesisArgs(int(n.Int64()) + 1)
 		}
 
 		templateValid := `%[2]v: &types.%[2]v{
@@ -328,7 +374,9 @@ func genesisModuleModify(replacer placeholder.Replacer, opts *typed.Options) gen
 
 		templateModuleInit := `// Set if defined
 if genState.%[3]v != nil {
-	k.Set%[3]v(ctx, *genState.%[3]v)
+	if err := k.%[3]v.Set(ctx, *genState.%[3]v); err != nil {
+		return err
+	}
 }
 %[1]v`
 		replacementModuleInit := fmt.Sprintf(
@@ -340,10 +388,11 @@ if genState.%[3]v != nil {
 		content := replacer.Replace(f.String(), typed.PlaceholderGenesisModuleInit, replacementModuleInit)
 
 		templateModuleExport := `// Get all %[2]v
-%[2]v, found := k.Get%[3]v(ctx)
-if found {
-	genesis.%[3]v = &%[2]v
+%[2]v, err := k.%[3]v.Get(ctx)
+if err != nil {
+	return nil, err
 }
+genesis.%[3]v = &%[2]v
 %[1]v`
 		replacementModuleExport := fmt.Sprintf(
 			templateModuleExport,
@@ -364,7 +413,7 @@ if found {
 //   - A service named "Msg" to exist in the proto file, it appends the RPCs inside it.
 func protoTxModify(opts *typed.Options) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := opts.ProtoPath("tx.proto")
+		path := opts.ProtoFile("tx.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -409,7 +458,7 @@ func protoTxModify(opts *typed.Options) genny.RunFn {
 			protoImports = append(protoImports, protoutil.NewImport(imp))
 		}
 		for _, f := range opts.Fields.Custom() {
-			protoPath := fmt.Sprintf("%[1]v/%[2]v/%[3]v.proto", opts.AppName, opts.ModuleName, f)
+			protoPath := fmt.Sprintf("%[1]v/%[2]v/%[3]v/%[4]v.proto", opts.AppName, opts.ModuleName, opts.ProtoVer, f)
 			protoImports = append(protoImports, protoutil.NewImport(protoPath))
 		}
 		// we already know an import exists, pass false for fallback.
@@ -516,7 +565,7 @@ func typesCodecModify(replacer placeholder.Replacer, opts *typed.Options) genny.
 		content = replacer.ReplaceOnce(content, typed.Placeholder, replacementImport)
 
 		// Interface
-		templateInterface := `registry.RegisterImplementations((*sdk.Msg)(nil),
+		templateInterface := `registrar.RegisterImplementations((*sdk.Msg)(nil),
 	&MsgCreate%[2]v{},
 	&MsgUpdate%[2]v{},
 	&MsgDelete%[2]v{},

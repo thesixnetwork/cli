@@ -5,17 +5,18 @@ import (
 
 	"github.com/emicklei/proto"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
 )
 
 // DataBool bool data type definition.
 var DataBool = DataType{
-	DataType:          func(string) string { return "bool" },
-	DefaultTestValue:  "false",
-	ValueLoop:         "false",
-	ValueIndex:        "false",
-	ValueInvalidIndex: "false",
+	DataType:                func(string) string { return "bool" },
+	CollectionsKeyValueName: func(string) string { return "collections.BoolKey" },
+	DefaultTestValue:        "false",
+	ValueLoop:               "false",
+	ValueIndex:              "false",
+	ValueInvalidIndex:       "false",
 	ProtoType: func(_, name string, index int) string {
 		return fmt.Sprintf("bool %s = %d", name, index)
 	},

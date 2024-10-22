@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	v1 "github.com/ignite/cli/v28/ignite/config/chain/v1"
+	v1 "github.com/ignite/cli/v29/ignite/config/chain/v1"
 )
 
 //go:embed config.yaml

@@ -8,11 +8,12 @@ import (
 )
 
 
-func (k msgServer) <%= MsgName.UpperCamel %>(goCtx context.Context,  msg *types.Msg<%= MsgName.UpperCamel %>) (*types.Msg<%= MsgName.UpperCamel %>Response, error) {
-	ctx := sdk.UnwrapSDKContext(goCtx)
+func (k msgServer) <%= MsgName.UpperCamel %>(ctx context.Context,  msg *types.Msg<%= MsgName.UpperCamel %>) (*types.Msg<%= MsgName.UpperCamel %>Response, error) {
+	if _, err := k.addressCodec.StringToBytes(msg.<%= MsgSigner.UpperCamel %>); err != nil {
+		return nil, errorsmod.Wrap(err, "invalid authority address")
+	}
 
-    // TODO: Handling the message
-    _ = ctx
+    // TODO: Handle the message
 
 	return &types.Msg<%= MsgName.UpperCamel %>Response{}, nil
 }

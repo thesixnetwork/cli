@@ -16,8 +16,9 @@ import (
 
 	"github.com/buger/jsonparser"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/tarball"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/safeconverter"
+	"github.com/ignite/cli/v29/ignite/pkg/tarball"
 )
 
 const (
@@ -242,7 +243,7 @@ func WithKeyValueInt(key string, value int64) UpdateFileOption {
 
 // WithKeyValueUint updates a file uint value object by key.
 func WithKeyValueUint(key string, value uint64) UpdateFileOption {
-	return WithKeyValueInt(key, int64(value))
+	return WithKeyValueInt(key, safeconverter.ToInt64[uint64](value))
 }
 
 // Update updates the file with the new parameters by key.

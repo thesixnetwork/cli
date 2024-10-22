@@ -4,29 +4,27 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/safeconverter"
 )
 
 const (
-	optionSimappGenesis                = "-Genesis"
-	optionSimappParams                 = "-Params"
-	optionSimappExportParamsPath       = "-ExportParamsPath"
-	optionSimappExportParamsHeight     = "-ExportParamsHeight"
-	optionSimappExportStatePath        = "-ExportStatePath"
-	optionSimappExportStatsPath        = "-ExportStatsPath"
-	optionSimappSeed                   = "-Seed"
-	optionSimappInitialBlockHeight     = "-InitialBlockHeight"
-	optionSimappNumBlocks              = "-NumBlocks"
-	optionSimappBlockSize              = "-BlockSize"
-	optionSimappLean                   = "-Lean"
-	optionSimappCommit                 = "-Commit"
-	optionSimappSimulateEveryOperation = "-SimulateEveryOperation"
-	optionSimappPrintAllInvariants     = "-PrintAllInvariants"
-	optionSimappEnabled                = "-Enabled"
-	optionSimappVerbose                = "-Verbose"
-	optionSimappPeriod                 = "-Period"
-	optionSimappGenesisTime            = "-GenesisTime"
+	optionSimappGenesis            = "-Genesis"
+	optionSimappParams             = "-Params"
+	optionSimappExportParamsPath   = "-ExportParamsPath"
+	optionSimappExportParamsHeight = "-ExportParamsHeight"
+	optionSimappExportStatePath    = "-ExportStatePath"
+	optionSimappExportStatsPath    = "-ExportStatsPath"
+	optionSimappSeed               = "-Seed"
+	optionSimappInitialBlockHeight = "-InitialBlockHeight"
+	optionSimappNumBlocks          = "-NumBlocks"
+	optionSimappBlockSize          = "-BlockSize"
+	optionSimappLean               = "-Lean"
+	optionSimappCommit             = "-Commit"
+	optionSimappEnabled            = "-Enabled"
+	optionSimappPeriod             = "-Period"
+	optionSimappGenesisTime        = "-GenesisTime"
 
 	commandGoTest       = "test"
 	optionGoBenchmem    = "-benchmem"
@@ -149,26 +147,6 @@ func SimappWithCommit(commit bool) SimappOption {
 	}
 }
 
-// SimappWithSimulateEveryOperation provides simulateEveryOperation option for the simapp command.
-func SimappWithSimulateEveryOperation(simulateEveryOperation bool) SimappOption {
-	return func(command []string) []string {
-		if simulateEveryOperation {
-			return append(command, optionSimappSimulateEveryOperation)
-		}
-		return command
-	}
-}
-
-// SimappWithPrintAllInvariants provides printAllInvariants option for the simapp command.
-func SimappWithPrintAllInvariants(printAllInvariants bool) SimappOption {
-	return func(command []string) []string {
-		if printAllInvariants {
-			return append(command, optionSimappPrintAllInvariants)
-		}
-		return command
-	}
-}
-
 // SimappWithEnable provides enable option for the simapp command.
 func SimappWithEnable(enable bool) SimappOption {
 	return func(command []string) []string {
@@ -179,20 +157,10 @@ func SimappWithEnable(enable bool) SimappOption {
 	}
 }
 
-// SimappWithVerbose provides verbose option for the simapp command.
-func SimappWithVerbose(verbose bool) SimappOption {
-	return func(command []string) []string {
-		if verbose {
-			return append(command, optionSimappVerbose)
-		}
-		return command
-	}
-}
-
 // SimappWithPeriod provides period option for the simapp command.
 func SimappWithPeriod(period uint) SimappOption {
 	return func(command []string) []string {
-		return append(command, optionSimappPeriod, strconv.Itoa(int(period)))
+		return append(command, optionSimappPeriod, strconv.Itoa(safeconverter.ToInt[uint](period)))
 	}
 }
 

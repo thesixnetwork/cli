@@ -4,9 +4,9 @@ import (
 	"context"
 	"go/ast"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/goanalysis"
-	"github.com/ignite/cli/v28/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/goanalysis"
+	"github.com/ignite/cli/v29/ignite/pkg/gocmd"
 )
 
 // DepTools necessary tools to build and run the chain.
@@ -19,7 +19,6 @@ func DepTools() []string {
 		// Go code generation plugin.
 		"google.golang.org/grpc/cmd/protoc-gen-go-grpc",
 		"google.golang.org/protobuf/cmd/protoc-gen-go",
-		"github.com/cosmos/cosmos-proto/cmd/protoc-gen-go-pulsar",
 
 		// grpc-gateway plugins.
 		"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway",

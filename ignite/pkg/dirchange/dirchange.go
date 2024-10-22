@@ -2,12 +2,12 @@ package dirchange
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/cache"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 var ErrNoFile = errors.New("no file in specified paths")
@@ -60,7 +60,7 @@ func HasDirChecksumChanged(checksumCache cache.Cache[[]byte], cacheKey string, w
 // ChecksumFromPaths computes the md5 checksum from the provided paths.
 // Relative paths to the workdir are used. If workdir is empty, string paths are absolute.
 func ChecksumFromPaths(workdir string, paths ...string) ([]byte, error) {
-	hash := md5.New()
+	hash := sha256.New()
 
 	// Can't compute hash if no file present
 	noFile := true

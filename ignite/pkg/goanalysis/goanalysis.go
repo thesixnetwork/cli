@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 const (
@@ -45,7 +45,6 @@ func DiscoverMain(path string) (pkgPaths []string, err error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -278,4 +277,119 @@ func createUnderscoreImport(imp string) *ast.ImportSpec {
 			Value: strconv.Quote(imp),
 		},
 	}
+}
+
+// ReplaceCode replace a function implementation into a package path. The method will find
+// the method signature and re-write the method implementation based in the new function.
+func ReplaceCode(pkgPath, oldFunctionName, newFunction string) (err error) {
+	absPath, err := filepath.Abs(pkgPath)
+	if err != nil {
+		return err
+	}
+
+	fileSet := token.NewFileSet()
+	all, err := parser.ParseDir(fileSet, absPath, func(os.FileInfo) bool { return true }, parser.ParseComments)
+	if err != nil {
+		return err
+	}
+
+	for _, pkg := range all {
+		for _, f := range pkg.Files {
+			found := false
+			ast.Inspect(f, func(n ast.Node) bool {
+				if funcDecl, ok := n.(*ast.FuncDecl); ok {
+					// Check if the function has the name you want to replace.
+					if funcDecl.Name.Name == oldFunctionName {
+						// Replace the function body with the replacement code.
+						replacementExpr, err := parser.ParseExpr(newFunction)
+						if err != nil {
+							return false
+						}
+						funcDecl.Body = &ast.BlockStmt{List: []ast.Stmt{
+							&ast.ExprStmt{X: replacementExpr},
+						}}
+						found = true
+						return false
+					}
+				}
+				return true
+			})
+			if err != nil {
+				return err
+			}
+			if !found {
+				continue
+			}
+			filePath := fileSet.Position(f.Package).Filename
+			outFile, err := os.Create(filePath)
+			if err != nil {
+				return err
+			}
+
+			// Format and write the modified AST to the output file.
+			if err := format.Node(outFile, fileSet, f); err != nil {
+				return err
+			}
+			if err := outFile.Close(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// HasAnyStructFieldsInPkg finds the struct within a package folder and checks
+// if any of the fields are defined in the struct.
+func HasAnyStructFieldsInPkg(pkgPath, structName string, fields []string) (bool, error) {
+	absPath, err := filepath.Abs(pkgPath)
+	if err != nil {
+		return false, err
+	}
+	fileSet := token.NewFileSet()
+	all, err := parser.ParseDir(fileSet, absPath, nil, parser.ParseComments)
+	if err != nil {
+		return false, err
+	}
+
+	fieldsNames := make(map[string]struct{})
+	for _, field := range fields {
+		fieldsNames[strings.ToLower(field)] = struct{}{}
+	}
+
+	exist := false
+	for _, pkg := range all {
+		for _, f := range pkg.Files {
+			ast.Inspect(f, func(x ast.Node) bool {
+				typeSpec, ok := x.(*ast.TypeSpec)
+				if !ok {
+					return true
+				}
+
+				if _, ok := typeSpec.Type.(*ast.StructType); !ok ||
+					typeSpec.Name.Name != structName ||
+					typeSpec.Type == nil {
+					return true
+				}
+
+				// Check if the struct has fields.
+				structType, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					return true
+				}
+
+				// Iterate through the fields of the struct.
+				for _, field := range structType.Fields.List {
+					for _, fieldName := range field.Names {
+						if _, ok := fieldsNames[strings.ToLower(fieldName.Name)]; !ok {
+							continue
+						}
+						exist = true
+						return false
+					}
+				}
+				return true
+			})
+		}
+	}
+	return exist, nil
 }

@@ -8,12 +8,13 @@ import (
 	"github.com/gobuffalo/plush/v4"
 	"github.com/iancoleman/strcase"
 
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/pkg/xstrings"
-	"github.com/ignite/cli/v28/ignite/templates/field/plushhelpers"
-	"github.com/ignite/cli/v28/ignite/templates/module"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodulepath"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/xast"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/pkg/xstrings"
+	"github.com/ignite/cli/v29/ignite/templates/field/plushhelpers"
+	"github.com/ignite/cli/v29/ignite/templates/module"
 )
 
 // NewGenerator returns the generator to scaffold a module inside an app.
@@ -46,17 +47,22 @@ func NewGenerator(opts *CreateOptions) (*genny.Generator, error) {
 	ctx.Set("moduleName", opts.ModuleName)
 	ctx.Set("modulePath", opts.ModulePath)
 	ctx.Set("appName", opts.AppName)
+	ctx.Set("protoVer", opts.ProtoVer)
 	ctx.Set("dependencies", opts.Dependencies)
 	ctx.Set("params", opts.Params)
+	ctx.Set("configs", opts.Configs)
 	ctx.Set("isIBC", opts.IsIBC)
-	ctx.Set("apiPath", fmt.Sprintf("/%s/%s", appModulePath, opts.ModuleName))
-	ctx.Set("protoPkgName", module.ProtoPackageName(appModulePath, opts.ModuleName))
+	ctx.Set("apiPath", fmt.Sprintf("/%s/%s/%s", appModulePath, opts.ModuleName, opts.ProtoVer))
+	ctx.Set("protoPkgName", module.ProtoPackageName(appModulePath, opts.ModuleName, opts.ProtoVer))
+	ctx.Set("protoModulePkgName", module.ProtoModulePackageName(appModulePath, opts.ModuleName, opts.ProtoVer))
 	ctx.Set("toVariableName", strcase.ToLowerCamel)
 
 	plushhelpers.ExtendPlushContext(ctx)
 	g.Transformer(xgenny.Transformer(ctx))
+	g.Transformer(genny.Replace("{{protoDir}}", opts.ProtoDir))
 	g.Transformer(genny.Replace("{{appName}}", opts.AppName))
 	g.Transformer(genny.Replace("{{moduleName}}", opts.ModuleName))
+	g.Transformer(genny.Replace("{{protoVer}}", opts.ProtoVer))
 
 	return g, nil
 }
@@ -81,17 +87,25 @@ func appConfigModify(replacer placeholder.Replacer, opts *CreateOptions) genny.R
 		}
 
 		// Import
-		template := `%[2]vmodulev1 "%[3]v/api/%[4]v/%[2]v/module"
-_ "%[3]v/x/%[2]v/module" // import for side-effects
-%[2]vmoduletypes "%[3]v/x/%[2]v/types"
-%[1]v`
-		replacement := fmt.Sprintf(template, module.PlaceholderSgAppModuleImport, opts.ModuleName, opts.ModulePath, opts.AppName)
-		content := replacer.Replace(fConfig.String(), module.PlaceholderSgAppModuleImport, replacement)
+		content, err := xast.AppendImports(
+			fConfig.String(),
+			xast.WithLastNamedImport(
+				"_",
+				fmt.Sprintf("%[1]v/x/%[2]v/module", opts.ModulePath, opts.ModuleName),
+			),
+			xast.WithLastNamedImport(
+				fmt.Sprintf("%[1]vmoduletypes", opts.ModuleName),
+				fmt.Sprintf("%[1]v/x/%[2]v/types", opts.ModulePath, opts.ModuleName),
+			),
+		)
+		if err != nil {
+			return err
+		}
 
 		// Init genesis
-		template = `%[2]vmoduletypes.ModuleName,
+		template := `%[2]vmoduletypes.ModuleName,
 %[1]v`
-		replacement = fmt.Sprintf(template, module.PlaceholderSgAppInitGenesis, opts.ModuleName)
+		replacement := fmt.Sprintf(template, module.PlaceholderSgAppInitGenesis, opts.ModuleName)
 		content = replacer.Replace(content, module.PlaceholderSgAppInitGenesis, replacement)
 		replacement = fmt.Sprintf(template, module.PlaceholderSgAppBeginBlockers, opts.ModuleName)
 		content = replacer.Replace(content, module.PlaceholderSgAppBeginBlockers, replacement)
@@ -100,7 +114,7 @@ _ "%[3]v/x/%[2]v/module" // import for side-effects
 
 		template = `{
 				Name:   %[2]vmoduletypes.ModuleName,
-				Config: appconfig.WrapAny(&%[2]vmodulev1.Module{}),
+				Config: appconfig.WrapAny(&%[2]vmoduletypes.Module{}),
 			},
 %[1]v`
 		replacement = fmt.Sprintf(template, module.PlaceholderSgAppModuleConfig, opts.ModuleName)
@@ -138,15 +152,21 @@ func appModify(replacer placeholder.Replacer, opts *CreateOptions) genny.RunFn {
 		}
 
 		// Import
-		template := `%[2]vmodulekeeper "%[3]v/x/%[2]v/keeper"
-%[1]v`
-		replacement := fmt.Sprintf(template, module.PlaceholderSgAppModuleImport, opts.ModuleName, opts.ModulePath)
-		content := replacer.Replace(f.String(), module.PlaceholderSgAppModuleImport, replacement)
+		content, err := xast.AppendImports(
+			f.String(),
+			xast.WithLastNamedImport(
+				fmt.Sprintf("%[1]vmodulekeeper", opts.ModuleName),
+				fmt.Sprintf("%[1]v/x/%[2]v/keeper", opts.ModulePath, opts.ModuleName),
+			),
+		)
+		if err != nil {
+			return err
+		}
 
 		// Keeper declaration
-		template = `%[2]vKeeper %[3]vmodulekeeper.Keeper
+		template := `%[2]vKeeper %[3]vmodulekeeper.Keeper
 %[1]v`
-		replacement = fmt.Sprintf(
+		replacement := fmt.Sprintf(
 			template,
 			module.PlaceholderSgAppKeeperDeclaration,
 			xstrings.Title(opts.ModuleName),
@@ -155,14 +175,18 @@ func appModify(replacer placeholder.Replacer, opts *CreateOptions) genny.RunFn {
 		content = replacer.Replace(content, module.PlaceholderSgAppKeeperDeclaration, replacement)
 
 		// Keeper definition
-		template = `&app.%[2]vKeeper,
-		%[1]v`
-		replacement = fmt.Sprintf(
-			template,
-			module.PlaceholderSgAppKeeperDefinition,
-			xstrings.Title(opts.ModuleName),
+		content, err = xast.ModifyFunction(
+			content,
+			"New",
+			xast.AppendInsideFuncCall(
+				"Inject",
+				fmt.Sprintf("\n&app.%[1]vKeeper", xstrings.Title(opts.ModuleName)),
+				-1,
+			),
 		)
-		content = replacer.Replace(content, module.PlaceholderSgAppKeeperDefinition, replacement)
+		if err != nil {
+			return err
+		}
 
 		newFile := genny.NewFileS(appPath, content)
 		return r.File(newFile)

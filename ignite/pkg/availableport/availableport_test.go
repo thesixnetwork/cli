@@ -1,13 +1,12 @@
 package availableport_test
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/availableport"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/availableport"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 func TestFind(t *testing.T) {
@@ -51,7 +50,6 @@ func TestFind(t *testing.T) {
 			name: "with randomizer",
 			n:    100,
 			options: []availableport.Options{
-				availableport.WithRandomizer(rand.New(rand.NewSource(2023))),
 				availableport.WithMinPort(100),
 				availableport.WithMaxPort(200),
 			},

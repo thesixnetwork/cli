@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 var (
@@ -31,7 +31,15 @@ type Account struct {
 // AddAccount creates a new account or imports an account when mnemonic is provided.
 // returns with an error if the operation went unsuccessful or an account with the provided name
 // already exists.
-func (r Runner) AddAccount(ctx context.Context, name, mnemonic, coinType string, algo string) (Account, error) {
+func (r Runner) AddAccount(
+	ctx context.Context,
+	name,
+	mnemonic,
+	coinType,
+	accountNumber,
+	addressIndex string,
+	algo string,
+) (Account, error) {
 	if err := r.CheckAccountExist(ctx, name); err != nil {
 		return Account{}, err
 	}
@@ -66,7 +74,7 @@ func (r Runner) AddAccount(ctx context.Context, name, mnemonic, coinType string,
 		if err := r.run(
 			ctx,
 			runOptions{},
-			r.chainCmd.RecoverKeyCommand(name, coinType, algo),
+			r.chainCmd.RecoverKeyCommand(name, coinType, accountNumber, addressIndex, algo),
 			step.Write(input.Bytes()),
 		); err != nil {
 			return Account{}, err
@@ -76,7 +84,7 @@ func (r Runner) AddAccount(ctx context.Context, name, mnemonic, coinType string,
 			stdout: b,
 			stderr: b,
 			stdin:  os.Stdin,
-		}, r.chainCmd.AddKeyCommand(name, coinType, algo)); err != nil {
+		}, r.chainCmd.AddKeyCommand(name, coinType, accountNumber, addressIndex, algo)); err != nil {
 			return Account{}, err
 		}
 

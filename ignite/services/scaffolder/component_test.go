@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
 )
 
 func TestCheckForbiddenComponentName(t *testing.T) {
@@ -21,7 +21,7 @@ func TestCheckForbiddenComponentName(t *testing.T) {
 		},
 		{
 			name:        "should prevent forbidden name",
-			compName:    "oracle",
+			compName:    "genesis",
 			shouldError: true,
 		},
 	}

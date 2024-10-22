@@ -3,9 +3,10 @@ package simulation
 import (
 	"math/rand"
 
+	"cosmossdk.io/collections"
+
 	"<%= ModulePath %>/x/<%= ModuleName %>/keeper"
 	"<%= ModulePath %>/x/<%= ModuleName %>/types"
-	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
@@ -16,8 +17,9 @@ func SimulateMsgCreate<%= TypeName.UpperCamel %>(
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
+	txGen client.TxConfig,
 ) simtypes.Operation {
-	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
+	return func(r *rand.Rand, app simtypes.AppEntrypoint, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		simAccount, _ := simtypes.RandomAcc(r, accs)
 
@@ -25,15 +27,15 @@ func SimulateMsgCreate<%= TypeName.UpperCamel %>(
 			<%= MsgSigner.UpperCamel %>: simAccount.Address.String(),
 		}
 
-		_, found := k.Get<%= TypeName.UpperCamel %>(ctx)
-		if found {
+		found, err := k.<%= TypeName.UpperCamel %>.Has(ctx)
+		if err == nil && found {
 			return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "<%= TypeName.UpperCamel %> already exist"), nil, nil
 		}
 
 		txCtx := simulation.OperationInput{
 			R:               r,
 			App:             app,
-			TxGen:           moduletestutil.MakeTestEncodingConfig().TxConfig,
+			TxGen:           txGen,
 			Cdc:             nil,
 			Msg:             msg,
 			Context:         ctx,
@@ -51,18 +53,19 @@ func SimulateMsgUpdate<%= TypeName.UpperCamel %>(
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
+	txGen client.TxConfig,
 ) simtypes.Operation {
-	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
+	return func(r *rand.Rand, app simtypes.AppEntrypoint, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		var (
 			simAccount = simtypes.Account{}
 			msg = &types.MsgUpdate<%= TypeName.UpperCamel %>{}
-			<%= TypeName.LowerCamel %>, found = k.Get<%= TypeName.UpperCamel %>(ctx)
+			<%= TypeName.LowerCamel %>, err = k.<%= TypeName.UpperCamel %>.Get(ctx)
 		)
-		if !found {
+		if err != nil {
 			return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "<%= TypeName.LowerCamel %> store is empty"), nil, nil
 		}
-		simAccount, found = FindAccount(accs, <%= TypeName.LowerCamel %>.<%= MsgSigner.UpperCamel %>)
+		simAccount, found := FindAccount(accs, <%= TypeName.LowerCamel %>.<%= MsgSigner.UpperCamel %>)
 		if !found {
 			return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "<%= TypeName.LowerCamel %> <%= MsgSigner.LowerCamel %> not found"), nil, nil
 		}
@@ -71,7 +74,7 @@ func SimulateMsgUpdate<%= TypeName.UpperCamel %>(
 		txCtx := simulation.OperationInput{
 			R:               r,
 			App:             app,
-			TxGen:           moduletestutil.MakeTestEncodingConfig().TxConfig,
+			TxGen:           txGen,
 			Cdc:             nil,
 			Msg:             msg,
 			Context:         ctx,
@@ -89,18 +92,19 @@ func SimulateMsgDelete<%= TypeName.UpperCamel %>(
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
+	txGen client.TxConfig,
 ) simtypes.Operation {
-	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
+	return func(r *rand.Rand, app simtypes.AppEntrypoint, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		var (
 			simAccount = simtypes.Account{}
 			msg = &types.MsgUpdate<%= TypeName.UpperCamel %>{}
-			<%= TypeName.LowerCamel %>, found = k.Get<%= TypeName.UpperCamel %>(ctx)
+			<%= TypeName.LowerCamel %>, err = k.<%= TypeName.UpperCamel %>.Get(ctx)
 		)
-		if !found {
+		if err != nil {
 			return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "<%= TypeName.LowerCamel %> store is empty"), nil, nil
 		}
-		simAccount, found = FindAccount(accs, <%= TypeName.LowerCamel %>.<%= MsgSigner.UpperCamel %>)
+		simAccount, found := FindAccount(accs, <%= TypeName.LowerCamel %>.<%= MsgSigner.UpperCamel %>)
 		if !found {
 			return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "<%= TypeName.LowerCamel %> <%= MsgSigner.LowerCamel %> not found"), nil, nil
 		}
@@ -109,7 +113,7 @@ func SimulateMsgDelete<%= TypeName.UpperCamel %>(
 		txCtx := simulation.OperationInput{
 			R:               r,
 			App:             app,
-			TxGen:           moduletestutil.MakeTestEncodingConfig().TxConfig,
+			TxGen:           txGen,
 			Cdc:             nil,
 			Msg:             msg,
 			Context:         ctx,

@@ -6,8 +6,8 @@ import (
 
 	"github.com/emicklei/proto"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/templates/field/datatype"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/templates/field/datatype"
 )
 
 // Field represents a field inside a structure for a component
@@ -39,6 +39,15 @@ func (f Field) ProtoType(index int) string {
 		panic(fmt.Sprintf("unknown type %s", f.DatatypeName))
 	}
 	return dt.ProtoType(f.Datatype, f.ProtoFieldName(), index)
+}
+
+// CollectionsKeyValueType returns the field collections key value type.
+func (f Field) CollectionsKeyValueType() string {
+	dt, ok := datatype.IsSupportedType(f.DatatypeName)
+	if !ok {
+		panic(fmt.Sprintf("unknown type %s", f.DatatypeName))
+	}
+	return dt.CollectionsKeyValueName(f.Datatype)
 }
 
 // DefaultTestValue returns the Datatype value default.
@@ -96,6 +105,7 @@ func (f Field) GenesisArgs(value int) string {
 }
 
 // CLIArgs returns the Datatype CLI args.
+// TODO(@julienrbrt): Once unused and fully replaced by AutoCLI, remove CLIArgs from DataType.
 func (f Field) CLIArgs(prefix string, argIndex int) string {
 	dt, ok := datatype.IsSupportedType(f.DatatypeName)
 	if !ok {
@@ -154,4 +164,12 @@ func (f Field) ProtoImports() []string {
 		panic(fmt.Sprintf("unknown type %s", f.DatatypeName))
 	}
 	return dt.ProtoImports
+}
+
+// Value returns the field assign value.
+func (f Field) Value() string {
+	if f.DataType() == "string" {
+		return fmt.Sprintf(`"%s"`, f.Name.Snake)
+	}
+	return f.ValueIndex()
 }

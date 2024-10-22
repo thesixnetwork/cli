@@ -14,6 +14,7 @@ import (
 
 var _ = strconv.Itoa(0)
 
+// CmdSend<%= packetName.UpperCamel %>() returns the <%= packetName.UpperCamel %> send packet command.
 // This command does not use AutoCLI because it gives a better UX to do not.
 func CmdSend<%= packetName.UpperCamel %>() *cobra.Command {
 	flagPacketTimeoutTimestamp := "packet-timeout-timestamp"
@@ -49,9 +50,7 @@ func CmdSend<%= packetName.UpperCamel %>() *cobra.Command {
             }
 
 			msg := types.NewMsgSend<%= packetName.UpperCamel %>(<%= MsgSigner.LowerCamel %>, srcPort, srcChannel, timeoutTimestamp<%= for (i, field) in fields { %>, arg<%= field.Name.UpperCamel %><% } %>)
-			if err := msg.ValidateBasic(); err != nil {
-				return err
-			}
+			
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}

@@ -6,15 +6,12 @@ import (
 
 	"github.com/gobuffalo/genny/v2"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/templates/field"
-	"github.com/ignite/cli/v28/ignite/templates/field/datatype"
-	"github.com/ignite/cli/v28/ignite/templates/message"
-	modulecreate "github.com/ignite/cli/v28/ignite/templates/module/create"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/templates/field"
+	"github.com/ignite/cli/v29/ignite/templates/field/datatype"
+	"github.com/ignite/cli/v29/ignite/templates/message"
+	modulecreate "github.com/ignite/cli/v29/ignite/templates/module/create"
 )
 
 // messageOptions represents configuration for the message scaffolding.
@@ -59,14 +56,12 @@ func WithoutSimulation() MessageOption {
 // AddMessage adds a new message to scaffolded app.
 func (s Scaffolder) AddMessage(
 	ctx context.Context,
-	cacheStorage cache.Storage,
-	tracer *placeholder.Tracer,
 	moduleName,
 	msgName string,
 	fields,
 	resFields []string,
 	options ...MessageOption,
-) (sm xgenny.SourceModification, err error) {
+) error {
 	// Create the options
 	scaffoldingOpts := newMessageOptions(msgName)
 	for _, apply := range options {
@@ -79,47 +74,63 @@ func (s Scaffolder) AddMessage(
 	}
 	mfName, err := multiformatname.NewName(moduleName, multiformatname.NoNumber)
 	if err != nil {
-		return sm, err
+		return err
 	}
 	moduleName = mfName.LowerCase
 
 	name, err := multiformatname.NewName(msgName)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
-	if err := checkComponentValidity(s.path, moduleName, name, false); err != nil {
-		return sm, err
+	if err := checkComponentValidity(s.appPath, moduleName, name, false); err != nil {
+		return err
 	}
 
 	// Check and parse provided fields
-	if err := checkCustomTypes(ctx, s.path, s.modpath.Package, moduleName, fields); err != nil {
-		return sm, err
+	if err := checkCustomTypes(
+		ctx,
+		s.appPath,
+		s.modpath.Package,
+		s.protoDir,
+		moduleName,
+		fields,
+	); err != nil {
+		return err
 	}
 	parsedMsgFields, err := field.ParseFields(fields, checkForbiddenMessageField, scaffoldingOpts.signer)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	// Check and parse provided response fields
-	if err := checkCustomTypes(ctx, s.path, s.modpath.Package, moduleName, resFields); err != nil {
-		return sm, err
+	if err := checkCustomTypes(
+		ctx,
+		s.appPath,
+		s.modpath.Package,
+		s.protoDir,
+		moduleName,
+		resFields,
+	); err != nil {
+		return err
 	}
 	parsedResFields, err := field.ParseFields(resFields, checkGoReservedWord, scaffoldingOpts.signer)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	mfSigner, err := multiformatname.NewName(scaffoldingOpts.signer)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	var (
 		g    *genny.Generator
 		opts = &message.Options{
 			AppName:      s.modpath.Package,
-			AppPath:      s.path,
+			AppPath:      s.appPath,
+			ProtoDir:     s.protoDir,
+			ProtoVer:     "v1", // TODO(@julienrbrt): possibly in the future add flag to specify custom proto version.
 			ModulePath:   s.modpath.RawPath,
 			ModuleName:   moduleName,
 			MsgName:      name,
@@ -135,30 +146,28 @@ func (s Scaffolder) AddMessage(
 	var gens []*genny.Generator
 	gens, err = supportMsgServer(
 		gens,
-		tracer,
-		s.path,
+		s.Tracer(),
 		&modulecreate.MsgServerOptions{
 			ModuleName: opts.ModuleName,
 			ModulePath: opts.ModulePath,
 			AppName:    opts.AppName,
 			AppPath:    opts.AppPath,
+			ProtoDir:   opts.ProtoDir,
+			ProtoVer:   opts.ProtoVer,
 		},
 	)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	// Scaffold
-	g, err = message.NewGenerator(tracer, opts)
+	g, err = message.NewGenerator(s.Tracer(), opts)
 	if err != nil {
-		return sm, err
+		return err
 	}
 	gens = append(gens, g)
-	sm, err = xgenny.RunWithValidation(tracer, gens...)
-	if err != nil {
-		return sm, err
-	}
-	return sm, finish(ctx, cacheStorage, opts.AppPath, s.modpath.RawPath)
+
+	return s.Run(gens...)
 }
 
 // checkForbiddenMessageField returns true if the name is forbidden as a message name.

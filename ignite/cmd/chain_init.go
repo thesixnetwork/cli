@@ -3,11 +3,10 @@ package ignitecmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/chaincmd"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/colors"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/services/chain"
+	"github.com/ignite/cli/v29/ignite/pkg/chaincmd"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/colors"
+	"github.com/ignite/cli/v29/ignite/services/chain"
 )
 
 func NewChainInit() *cobra.Command {
@@ -89,7 +88,8 @@ commands manually to ensure a production-level node initialization.
 	c.Flags().AddFlagSet(flagSetCheckDependencies())
 	c.Flags().AddFlagSet(flagSetSkipProto())
 	c.Flags().AddFlagSet(flagSetDebug())
-	c.Flags().StringSlice(flagBuildTags, []string{cosmosver.DefaultVersion().String()}, "parameters to build the chain binary")
+	c.Flags().AddFlagSet(flagSetVerbose())
+	c.Flags().StringSlice(flagBuildTags, []string{}, "parameters to build the chain binary")
 
 	return c
 }
@@ -112,7 +112,13 @@ func chainInitHandler(cmd *cobra.Command, _ []string) error {
 		chainOption = append(chainOption, chain.CheckDependencies())
 	}
 
-	c, err := newChainWithHomeFlags(cmd, chainOption...)
+	// check if custom config is defined
+	config, _ := cmd.Flags().GetString(flagConfig)
+	if config != "" {
+		chainOption = append(chainOption, chain.ConfigFile(config))
+	}
+
+	c, err := chain.NewWithHomeFlags(cmd, chainOption...)
 	if err != nil {
 		return err
 	}

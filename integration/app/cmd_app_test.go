@@ -3,14 +3,15 @@
 package app_test
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	envtest "github.com/ignite/cli/v28/integration"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	envtest "github.com/ignite/cli/v29/integration"
 )
 
 // TestGenerateAnApp tests scaffolding a new chain.
@@ -52,6 +53,23 @@ func TestGenerateAnAppWithName(t *testing.T) {
 	app.EnsureSteady()
 }
 
+// TestGenerateAnAppWithInvalidName tests scaffolding a new chain using an invalid name.
+func TestGenerateAnAppWithInvalidName(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	env := envtest.New(t)
+	env.Must(env.Exec("should prevent creating an app with an invalid name",
+		step.NewSteps(step.New(
+			step.Exec(envtest.IgniteApp, "s", "chain", "blog2"),
+			step.Stdout(buf),
+			step.Stderr(buf),
+		)),
+		envtest.ExecShouldError(),
+	))
+
+	require.Contains(t, buf.String(), "Invalid app name blog2: cannot contain numbers")
+}
+
 func TestGenerateAnAppWithNoDefaultModule(t *testing.T) {
 	var (
 		env = envtest.New(t)
@@ -78,32 +96,6 @@ func TestGenerateAnAppWithNoDefaultModuleAndCreateAModule(t *testing.T) {
 			step.Workdir(app.SourcePath()),
 		)),
 	))
-}
-
-func TestGenerateAnAppWithWasm(t *testing.T) {
-	t.Skip()
-
-	var (
-		env = envtest.New(t)
-		app = env.Scaffold("github.com/test/blog")
-	)
-
-	env.Must(env.Exec("add Wasm module",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "wasm", "--yes"),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	env.Must(env.Exec("should not add Wasm module second time",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "wasm", "--yes"),
-			step.Workdir(app.SourcePath()),
-		)),
-		envtest.ExecShouldError(),
-	))
-
-	app.EnsureSteady()
 }
 
 func TestGenerateAppWithEmptyModule(t *testing.T) {
@@ -168,7 +160,7 @@ func TestGenerateAppWithEmptyModule(t *testing.T) {
 				"--yes",
 				"with_dep",
 				"--dep",
-				"account,bank,staking,slashing,example",
+				"auth,bank,staking,slashing,example",
 				"--require-registration",
 			),
 			step.Workdir(app.SourcePath()),

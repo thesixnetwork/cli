@@ -1,14 +1,18 @@
 package message
 
 import (
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/templates/field"
+	"path/filepath"
+
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/templates/field"
 )
 
 // Options ...
 type Options struct {
 	AppName      string
 	AppPath      string
+	ProtoDir     string
+	ProtoVer     string
 	ModuleName   string
 	ModulePath   string
 	MsgName      multiformatname.Name
@@ -19,7 +23,7 @@ type Options struct {
 	NoSimulation bool
 }
 
-// Validate that options are usable.
-func (opts *Options) Validate() error {
-	return nil
+// ProtoFile returns the path to the proto folder.
+func (opts *Options) ProtoFile(fname string) string {
+	return filepath.Join(opts.AppPath, opts.ProtoDir, opts.AppName, opts.ModuleName, opts.ProtoVer, fname)
 }

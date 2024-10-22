@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -17,13 +16,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 
-	ignitecmd "github.com/ignite/cli/v28/ignite/cmd"
-	pluginsconfig "github.com/ignite/cli/v28/ignite/config/plugins"
-	"github.com/ignite/cli/v28/ignite/pkg/env"
-	"github.com/ignite/cli/v28/ignite/services/plugin"
+	ignitecmd "github.com/ignite/cli/v29/ignite/cmd"
+	pluginsconfig "github.com/ignite/cli/v29/ignite/config/plugins"
+	"github.com/ignite/cli/v29/ignite/pkg/env"
+	"github.com/ignite/cli/v29/ignite/services/plugin"
 )
 
-const head = `---
+const (
+	head = `---
 description: Ignite CLI docs.
 ---
 
@@ -31,16 +31,16 @@ description: Ignite CLI docs.
 
 Documentation for Ignite CLI.
 `
+	outFlag = "out"
+)
 
 func main() {
-	outPath := flag.String("out", ".", ".md file path to place Ignite CLI docs inside")
-	flag.Parse()
-	if err := run(*outPath); err != nil {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(outPath string) error {
+func run() error {
 	// We want to have documentation for commands that are implemented in plugins.
 	// To do that, we need to add the related plugins in the config.
 	// To avoid conflicts with user config, set an alternate config dir in tmp.
@@ -71,9 +71,21 @@ func run(outPath string) error {
 		return err
 	}
 	defer cleanUp()
+	cmd.Flags().String(outFlag, ".", ".md file path to place Ignite CLI docs inside")
+	if err := cmd.Flags().MarkHidden(outFlag); err != nil {
+		return err
+	}
 
 	// Run ExecuteC so cobra adds the completion command.
-	cmd, _ = cmd.ExecuteC()
+	cmd, err = cmd.ExecuteC()
+	if err != nil {
+		return err
+	}
+
+	outPath, err := cmd.Flags().GetString(outFlag)
+	if err != nil {
+		return nil
+	}
 
 	return generate(cmd, outPath)
 }

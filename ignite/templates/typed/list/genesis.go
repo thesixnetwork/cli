@@ -6,11 +6,12 @@ import (
 
 	"github.com/gobuffalo/genny/v2"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
-	"github.com/ignite/cli/v28/ignite/templates/module"
-	"github.com/ignite/cli/v28/ignite/templates/typed"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/pkg/xast"
+	"github.com/ignite/cli/v29/ignite/templates/module"
+	"github.com/ignite/cli/v29/ignite/templates/typed"
 )
 
 func genesisModify(replacer placeholder.Replacer, opts *typed.Options, g *genny.Generator) {
@@ -27,7 +28,7 @@ func genesisModify(replacer placeholder.Replacer, opts *typed.Options, g *genny.
 //   - Existence of a message with name "GenesisState". Adds the field there.
 func genesisProtoModify(opts *typed.Options) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := opts.ProtoPath("genesis.proto")
+		path := opts.ProtoFile("genesis.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -74,10 +75,10 @@ func genesisTypesModify(replacer placeholder.Replacer, opts *typed.Options) genn
 			return err
 		}
 
-		content := typed.PatchGenesisTypeImport(replacer, f.String())
-
-		templateTypesImport := `"fmt"`
-		content = replacer.ReplaceOnce(content, typed.PlaceholderGenesisTypesImport, templateTypesImport)
+		content, err := xast.AppendImports(f.String(), xast.WithLastImport("fmt"))
+		if err != nil {
+			return err
+		}
 
 		templateTypesDefault := `%[2]vList: []%[2]v{},
 %[1]v`
@@ -124,11 +125,15 @@ func genesisModuleModify(replacer placeholder.Replacer, opts *typed.Options) gen
 
 		templateModuleInit := `// Set all the %[2]v
 for _, elem := range genState.%[3]vList {
-	k.Set%[3]v(ctx, elem)
+	if err := k.%[3]v.Set(ctx, elem.Id, elem); err != nil {
+		return err
+	}
 }
 
 // Set %[2]v count
-k.Set%[3]vCount(ctx, genState.%[3]vCount)
+if err := k.%[3]vSeq.Set(ctx, genState.%[3]vCount); err != nil {
+	return err
+}
 %[1]v`
 		replacementModuleInit := fmt.Sprintf(
 			templateModuleInit,
@@ -138,8 +143,20 @@ k.Set%[3]vCount(ctx, genState.%[3]vCount)
 		)
 		content := replacer.Replace(f.String(), typed.PlaceholderGenesisModuleInit, replacementModuleInit)
 
-		templateModuleExport := `genesis.%[2]vList = k.GetAll%[2]v(ctx)
-genesis.%[2]vCount = k.Get%[2]vCount(ctx)
+		templateModuleExport := `
+err = k.%[2]v.Walk(ctx, nil, func(key uint64, elem types.%[2]v) (bool, error) {
+		genesis.%[2]vList = append(genesis.%[2]vList, elem)
+		return false, nil
+})
+if err != nil {
+	return nil, err
+}
+
+genesis.%[2]vCount, err = k.%[2]vSeq.Peek(ctx)
+if err != nil {
+	return nil, err
+}
+
 %[1]v`
 		replacementModuleExport := fmt.Sprintf(
 			templateModuleExport,

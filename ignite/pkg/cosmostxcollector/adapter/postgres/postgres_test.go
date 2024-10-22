@@ -16,9 +16,9 @@ import (
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosclient"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmostxcollector/query"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosclient"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmostxcollector/query"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 var (
@@ -162,7 +162,7 @@ func TestSave(t *testing.T) {
 		)
 	attrStmt.
 		ExpectExec().
-		WithArgs(evtID, string(evtAttr.Key), jsonEvtAttrValue).
+		WithArgs(evtID, evtAttr.Key, jsonEvtAttrValue).
 		WillReturnResult(insertResult)
 
 	mock.ExpectCommit()
@@ -540,6 +540,7 @@ func TestEventQueryWithEventAttrFilters(t *testing.T) {
 }
 
 func createMatchEqualSQLMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
+	t.Helper()
 	db, mock, err := sqlmock.New(
 		sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual),
 	)

@@ -7,6 +7,8 @@ import (
 	"os"
 
 	dkeyring "github.com/99designs/keyring"
+	"github.com/cosmos/go-bip39"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -15,9 +17,8 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/cosmos/go-bip39"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 const (
@@ -334,7 +335,7 @@ func (r Registry) DeleteByName(name string) error {
 }
 
 func (r Registry) hdPath() string {
-	return hd.CreateHDPath(sdktypes.GetConfig().GetCoinType(), 0, 0).String()
+	return hd.CreateHDPath(sdktypes.CoinType, 0, 0).String()
 }
 
 func (r Registry) algo() (keyring.SignatureAlgo, error) {

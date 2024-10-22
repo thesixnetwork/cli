@@ -12,9 +12,9 @@ import (
 
 	"golang.org/x/mod/modfile"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodule"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodule"
 )
 
 const (
@@ -25,8 +25,7 @@ const (
 
 var AppImplementation = []string{
 	"AppCodec",
-	"GetKey",
-	"GetMemKey",
+	"TxConfig",
 	"RegisterAPIRoutes",
 }
 
@@ -53,7 +52,6 @@ func DeepFindImplementation(modulePath string, interfaceList []string) (found []
 			found = append(found, currFound...)
 			return nil
 		})
-
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +265,6 @@ func FindAppFilePath(chainRoot string) (path string, err error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return "", err
 	}

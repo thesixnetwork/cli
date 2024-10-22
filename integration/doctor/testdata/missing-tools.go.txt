@@ -2,12 +2,11 @@
 # if no tools.go it should populate a new one
 exec $IGNITE doctor
 # assert generated tools.go
-cmp tools/tools.go tools.go.golden
+cmp tools.go.golden tools/tools.go
 # assert go.sum has been generated (go mod tidy has run)
 exists go.sum
 # assert tools have been installed
 exists $GOPATH/bin/protoc-gen-gocosmos
-exists $GOPATH/bin/protoc-gen-go-pulsar
 exists $GOPATH/bin/buf
 exists $GOPATH/bin/protoc-gen-grpc-gateway
 
@@ -15,6 +14,10 @@ exists $GOPATH/bin/protoc-gen-grpc-gateway
 version: 1
 -- go.mod --
 module github.com/ignite/cli
+
+require (
+	github.com/bufbuild/buf v1.32.1
+)
 
 go 1.20
 -- tools.go.golden --
@@ -27,7 +30,6 @@ import (
 	_ "github.com/cosmos/gogoproto/protoc-gen-gocosmos"
 	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
 	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
-	_ "github.com/cosmos/cosmos-proto/cmd/protoc-gen-go-pulsar"
 	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
 	_ "golang.org/x/tools/cmd/goimports"

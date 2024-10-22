@@ -8,11 +8,11 @@ import (
 
 	"github.com/imdario/mergo"
 
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	chaincmdrunner "github.com/ignite/cli/v28/ignite/pkg/chaincmd/runner"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/view/accountview"
-	"github.com/ignite/cli/v28/ignite/pkg/confile"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	chaincmdrunner "github.com/ignite/cli/v29/ignite/pkg/chaincmd/runner"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/view/accountview"
+	"github.com/ignite/cli/v29/ignite/pkg/confile"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
 )
 
 type (
@@ -100,7 +100,7 @@ func (c *Chain) InitChain(ctx context.Context, initConfiguration, initGenesis bo
 
 	// ovewrite app config files with the values defined in Ignite's config file
 	if initConfiguration {
-		if err := c.Configure(home, conf); err != nil {
+		if err := c.Configure(home, chainID, conf); err != nil {
 			return err
 		}
 	}
@@ -138,7 +138,15 @@ func (c *Chain) InitAccounts(ctx context.Context, cfg *chainconfig.Config) error
 
 		// If the account doesn't provide an address, we create one
 		if accountAddress == "" {
-			generatedAccount, err = commands.AddAccount(ctx, account.Name, account.Mnemonic, account.CoinType, account.Algo)
+			generatedAccount, err = commands.AddAccount(
+				ctx,
+				account.Name,
+				account.Mnemonic,
+				account.CoinType,
+				account.AccountNumber,
+				account.AddressIndex,
+				account.Algo,
+			)
 			if err != nil {
 				return err
 			}
@@ -164,11 +172,21 @@ func (c *Chain) InitAccounts(ctx context.Context, cfg *chainconfig.Config) error
 	c.ev.SendView(accounts, events.ProgressFinish())
 
 	// 0 length validator set when using network config
-	if len(cfg.Validators) != 0 {
-		_, err = c.IssueGentx(ctx, createValidatorFromConfig(cfg))
+	if len(cfg.Validators) == 0 {
+		return nil
 	}
 
-	return err
+	if cfg.IsConsumerChain() {
+		// we skip early if the chain is a consumer chain
+		return nil
+	}
+
+	// Sovereign chain writes validators in gentxs.
+	if _, err := c.IssueGentx(ctx, createValidatorFromConfig(cfg)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // IssueGentx generates a gentx from the validator information in chain config and imports it in the chain genesis.
@@ -189,19 +207,29 @@ func (c Chain) IssueGentx(ctx context.Context, v Validator) (string, error) {
 }
 
 // IsInitialized checks if the chain is initialized.
-// The check is performed by checking if the gentx dir exists in the config.
+// The check is performed by checking if the gentx dir exists in the config,
+// unless c is a consumer chain, in which case the check relies on checking if
+// the consumer genesis module is filled with validators.
 func (c *Chain) IsInitialized() (bool, error) {
 	home, err := c.Home()
 	if err != nil {
 		return false, err
 	}
+
+	cfg, err := c.Config()
+	if err != nil {
+		return false, err
+	}
+	if cfg.IsConsumerChain() {
+		// when consumer chain, we skip the IsInialized logic
+		return true, nil
+	}
+
 	gentxDir := filepath.Join(home, "config", "gentx")
 
 	if _, err := os.Stat(gentxDir); os.IsNotExist(err) {
 		return false, nil
-	}
-	if err != nil {
-		// Return error on other error
+	} else if err != nil {
 		return false, err
 	}
 

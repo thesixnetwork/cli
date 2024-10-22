@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/xos"
+	"github.com/ignite/cli/v29/ignite/pkg/xos"
 )
 
 func TestFindFiles(t *testing.T) {
@@ -24,6 +24,13 @@ func TestFindFiles(t *testing.T) {
 			files:     []string{"file1.json", "file2.txt", "file3.json", "file4.json"},
 			extension: "json",
 			want:      []string{"file1.json", "file3.json", "file4.json"},
+			err:       nil,
+		},
+		{
+			name:      "test 3 json files with subfolder",
+			files:     []string{"testdata/file1.json", "file2.txt", "foo/file3.json", "file4.json"},
+			extension: "json",
+			want:      []string{"testdata/file1.json", "foo/file3.json", "file4.json"},
 			err:       nil,
 		},
 		{
@@ -59,12 +66,13 @@ func TestFindFiles(t *testing.T) {
 
 			for _, filename := range tt.files {
 				filePath := filepath.Join(tempDir, filename)
+				require.NoError(t, os.MkdirAll(filepath.Dir(filePath), 0o755))
 				file, err := os.Create(filePath)
 				require.NoError(t, err)
 				require.NoError(t, file.Close())
 			}
 
-			gotFiles, err := xos.FindFiles(tempDir, tt.extension)
+			gotFiles, err := xos.FindFilesExtension(tempDir, tt.extension)
 			if tt.err != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tt.err)
@@ -76,7 +84,7 @@ func TestFindFiles(t *testing.T) {
 			for i, filename := range tt.want {
 				want[i] = filepath.Join(tempDir, filename)
 			}
-			require.EqualValues(t, want, gotFiles)
+			require.ElementsMatch(t, want, gotFiles)
 		})
 	}
 }

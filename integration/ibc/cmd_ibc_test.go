@@ -5,11 +5,13 @@ package ibc_test
 import (
 	"testing"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	envtest "github.com/ignite/cli/v28/integration"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	envtest "github.com/ignite/cli/v29/integration"
 )
 
 func TestCreateModuleWithIBC(t *testing.T) {
+	t.Skip("skipping test as IBC isn't available with v0.52 yet") // https://github.com/ignite/cli/pull/4289
+
 	var (
 		env = envtest.New(t)
 		app = env.Scaffold("github.com/test/blogibc")
@@ -96,100 +98,22 @@ func TestCreateModuleWithIBC(t *testing.T) {
 				"with_dep",
 				"--ibc",
 				"--dep",
-				"account,bank,staking,slashing",
+				"auth,bank,staking,slashing",
 				"--require-registration",
 			),
 			step.Workdir(app.SourcePath()),
 		)),
-	))
-
-	app.EnsureSteady()
-}
-
-// Deprecated: Oracle functionality is no longer tested.
-func TestCreateIBCOracle(t *testing.T) {
-	t.Skip() // TODO remove in future
-	var (
-		env = envtest.New(t)
-		app = env.Scaffold("github.com/test/ibcoracle")
-	)
-
-	env.Must(env.Exec("create an IBC module",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "module", "--yes", "foo", "--ibc", "--require-registration"),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	env.Must(env.Exec("create an IBC module with params",
-		step.NewSteps(step.New(
-			step.Exec(
-				envtest.IgniteApp,
-				"s",
-				"module",
-				"--yes",
-				"paramsFoo",
-				"--ibc",
-				"--params",
-				"defaultName,isLaunched:bool,minLaunch:uint,maxLaunch:int",
-				"--require-registration",
-			),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	env.Must(env.Exec("create the first BandChain oracle integration",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "band", "--yes", "oracleone", "--module", "foo"),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	env.Must(env.Exec("create the second BandChain oracle integration",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "band", "--yes", "oracletwo", "--module", "foo"),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	env.Must(env.Exec("should prevent creating a BandChain oracle with no module specified",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "band", "--yes", "invalidOracle"),
-			step.Workdir(app.SourcePath()),
-		)),
-		envtest.ExecShouldError(),
-	))
-
-	env.Must(env.Exec("should prevent creating a BandChain oracle in a non existent module",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "band", "--yes", "invalidOracle", "--module", "nomodule"),
-			step.Workdir(app.SourcePath()),
-		)),
-		envtest.ExecShouldError(),
-	))
-
-	env.Must(env.Exec("create a non-IBC module",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "module", "--yes", "bar", "--params", "name,minLaunch:uint,maxLaunch:int", "--require-registration"),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	env.Must(env.Exec("should prevent creating a BandChain oracle in a non IBC module",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "band", "--yes", "invalidOracle", "--module", "bar"),
-			step.Workdir(app.SourcePath()),
-		)),
-		envtest.ExecShouldError(),
 	))
 
 	app.EnsureSteady()
 }
 
 func TestCreateIBCPacket(t *testing.T) {
+	t.Skip("skipping test as IBC isn't available with v0.52 yet") // https://github.com/ignite/cli/pull/4289
+
 	var (
 		env = envtest.New(t)
-		app = env.Scaffold("github.com/test/blogibc2")
+		app = env.Scaffold("github.com/test/blogibcb")
 	)
 
 	env.Must(env.Exec("create an IBC module",

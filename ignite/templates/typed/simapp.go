@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
 )
 
 func ModuleSimulationMsgModify(
@@ -37,7 +37,7 @@ func ModuleSimulationMsgModify(
 	)
 	operations = append(operations, simulation.NewWeightedOperation(
 		weightMsg%[2]v%[3]v,
-		%[4]vsimulation.SimulateMsg%[2]v%[3]v(am.accountKeeper, am.bankKeeper, am.keeper),
+		%[4]vsimulation.SimulateMsg%[2]v%[3]v(am.accountKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
 	))
 
 	%[1]v`
@@ -48,9 +48,9 @@ func ModuleSimulationMsgModify(
 			templateOpMsg := `simulation.NewWeightedProposalMsg(
 	opWeightMsg%[2]v%[3]v,
 	defaultWeightMsg%[2]v%[3]v,
-	func(r *rand.Rand, ctx sdk.Context, accs []simtypes.Account) sdk.Msg {
-		%[4]vsimulation.SimulateMsg%[2]v%[3]v(am.accountKeeper, am.bankKeeper, am.keeper)
-		return nil
+	func(r *rand.Rand, accs []simtypes.Account, cdc address.Codec) (sdk.Msg, error) {
+		%[4]vsimulation.SimulateMsg%[2]v%[3]v(am.accountKeeper, am.bankKeeper, am.keeper, simState.TxConfig)
+		return nil, nil
 	},
 ),
 %[1]v`

@@ -8,12 +8,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	"github.com/ignite/cli/v28/ignite/config/chain/base"
-	"github.com/ignite/cli/v28/ignite/pkg/xurl"
-	envtest "github.com/ignite/cli/v28/integration"
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	"github.com/ignite/cli/v29/ignite/config/chain/base"
+	"github.com/ignite/cli/v29/ignite/pkg/xurl"
+	envtest "github.com/ignite/cli/v29/integration"
 )
 
+// TestBankModule tests the bank module by creating accounts, transferring tokens between them, and querying the account balances.
 func TestBankModule(t *testing.T) {
 	t.Skip()
 

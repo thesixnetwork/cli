@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ignite/cli/v28/ignite/pkg/xexec"
+	"github.com/ignite/cli/v29/ignite/pkg/xexec"
 )
 
 // Sum reads files from dirPath, calculates sha256 for each file and creates a new checksum
@@ -42,7 +42,7 @@ func Sum(dirPath, outPath string) error {
 		}
 	}
 
-	return os.WriteFile(outPath, b.Bytes(), 0o666)
+	return os.WriteFile(outPath, b.Bytes(), 0o600)
 }
 
 // Binary returns SHA256 hash of executable file, file is searched by name in PATH.

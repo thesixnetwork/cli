@@ -6,82 +6,82 @@ import (
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/spf13/cobra"
 
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	chainconfigv1 "github.com/ignite/cli/v28/ignite/config/chain/v1"
-	"github.com/ignite/cli/v28/ignite/pkg/chaincmd"
-	chaincmdrunner "github.com/ignite/cli/v28/ignite/pkg/chaincmd/runner"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/colors"
-	uilog "github.com/ignite/cli/v28/ignite/pkg/cliui/log"
-	"github.com/ignite/cli/v28/ignite/pkg/confile"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
-	"github.com/ignite/cli/v28/ignite/pkg/repoversion"
-	"github.com/ignite/cli/v28/ignite/pkg/xexec"
-	"github.com/ignite/cli/v28/ignite/pkg/xurl"
-	igniteversion "github.com/ignite/cli/v28/ignite/version"
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	chainconfigv1 "github.com/ignite/cli/v29/ignite/config/chain/v1"
+	"github.com/ignite/cli/v29/ignite/pkg/chaincmd"
+	chaincmdrunner "github.com/ignite/cli/v29/ignite/pkg/chaincmd/runner"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/colors"
+	uilog "github.com/ignite/cli/v29/ignite/pkg/cliui/log"
+	"github.com/ignite/cli/v29/ignite/pkg/confile"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/pkg/repoversion"
+	"github.com/ignite/cli/v29/ignite/pkg/xexec"
+	"github.com/ignite/cli/v29/ignite/pkg/xurl"
+	igniteversion "github.com/ignite/cli/v29/ignite/version"
 )
 
-var appBackendSourceWatchPaths = []string{
-	"app",
-	"cmd",
-	"x",
-	"proto",
-	"third_party",
-}
+const (
+	flagPath = "path"
+	flagHome = "home"
+)
 
-type version struct {
-	tag  string
-	hash string
-}
+type (
+	// Chain provides programmatic access and tools for a Cosmos SDK blockchain.
+	Chain struct {
+		// app holds info about blockchain app.
+		app App
 
-// Chain provides programmatic access and tools for a Cosmos SDK blockchain.
-type Chain struct {
-	// app holds info about blockchain app.
-	app App
+		options chainOptions
 
-	options chainOptions
+		Version cosmosver.Version
 
-	Version cosmosver.Version
+		sourceVersion  version
+		serveCancel    context.CancelFunc
+		serveRefresher chan struct{}
+		served         bool
 
-	sourceVersion  version
-	serveCancel    context.CancelFunc
-	serveRefresher chan struct{}
-	served         bool
+		ev          events.Bus
+		logOutputer uilog.Outputer
+	}
 
-	ev          events.Bus
-	logOutputer uilog.Outputer
-}
+	// chainOptions holds user given options that overwrites chain's defaults.
+	chainOptions struct {
+		// chainID is the chain's id.
+		chainID string
 
-// chainOptions holds user given options that overwrites chain's defaults.
-type chainOptions struct {
-	// chainID is the chain's id.
-	chainID string
+		// homePath of the chain's config dir.
+		homePath string
 
-	// homePath of the chain's config dir.
-	homePath string
+		// keyring backend used by commands if not specified in configuration
+		keyringBackend chaincmd.KeyringBackend
 
-	// keyring backend used by commands if not specified in configuration
-	keyringBackend chaincmd.KeyringBackend
+		// checkDependencies checks that cached Go dependencies of the chain have not
+		// been modified since they were downloaded.
+		checkDependencies bool
 
-	// checkDependencies checks that cached Go dependencies of the chain have not
-	// been modified since they were downloaded.
-	checkDependencies bool
+		// checkCosmosSDKVersion checks that the app was scaffolded with version of
+		// the Cosmos SDK that is supported by Ignite CLI.
+		checkCosmosSDKVersion bool
 
-	// checkCosmosSDKVersion checks that the app was scaffolded with version of
-	// the Cosmos SDK that is supported by Ignite CLI.
-	checkCosmosSDKVersion bool
+		// printGeneratedPaths prints the output paths of the generated code
+		printGeneratedPaths bool
 
-	// printGeneratedPaths prints the output paths of the generated code
-	printGeneratedPaths bool
+		// path of a custom config file
+		ConfigFile string
+	}
 
-	// path of a custom config file
-	ConfigFile string
-}
+	version struct {
+		tag  string
+		hash string
+	}
 
-// Option configures Chain.
-type Option func(*Chain)
+	// Option configures Chain.
+	Option func(*Chain)
+)
 
 // ID replaces chain's id with given id.
 func ID(id string) Option {
@@ -185,6 +185,24 @@ func New(path string, options ...Option) (*Chain, error) {
 	return c, nil
 }
 
+func NewWithHomeFlags(cmd *cobra.Command, chainOption ...Option) (*Chain, error) {
+	var (
+		home, _    = cmd.Flags().GetString(flagHome)
+		appPath, _ = cmd.Flags().GetString(flagPath)
+	)
+
+	absPath, err := filepath.Abs(appPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if custom home is provided
+	if home != "" {
+		chainOption = append(chainOption, HomePath(home))
+	}
+	return New(absPath, chainOption...)
+}
+
 func (c *Chain) appVersion() (v version, err error) {
 	ver, err := repoversion.Determine(c.app.Path)
 	if err != nil {
@@ -206,7 +224,12 @@ func (c *Chain) RPCPublicAddress() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		validator := conf.Validators[0]
+
+		validator, err := chainconfig.FirstValidator(conf)
+		if err != nil {
+			return "", err
+		}
+
 		servers, err := validator.GetServers()
 		if err != nil {
 			return "", err
@@ -500,4 +523,14 @@ func (c *Chain) Commands(ctx context.Context) (chaincmdrunner.Runner, error) {
 	}
 
 	return chaincmdrunner.New(ctx, cc, ccrOptions...)
+}
+
+func appBackendSourceWatchPaths(protoDir string) []string {
+	return []string{
+		"app",
+		"cmd",
+		"x",
+		"third_party",
+		protoDir,
+	}
 }

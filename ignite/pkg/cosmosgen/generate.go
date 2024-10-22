@@ -9,21 +9,22 @@ import (
 	"path/filepath"
 	"slices"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/colors"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/icons"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosanalysis/module"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosbuf"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodule"
-	"github.com/ignite/cli/v28/ignite/pkg/xfilepath"
-	"github.com/ignite/cli/v28/ignite/pkg/xos"
+	"github.com/ignite/cli/v29/ignite/config/chain/defaults"
+	"github.com/ignite/cli/v29/ignite/pkg/cache"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/colors"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/icons"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosanalysis/module"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosbuf"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodule"
+	"github.com/ignite/cli/v29/ignite/pkg/xfilepath"
+	"github.com/ignite/cli/v29/ignite/pkg/xos"
 )
 
 const (
@@ -123,7 +124,7 @@ func (g *generator) setup(ctx context.Context) (err error) {
 		return err
 	}
 
-	g.appIncludes, _, err = g.resolveIncludes(ctx, g.appPath)
+	g.appIncludes, _, err = g.resolveIncludes(ctx, g.appPath, g.protoDir)
 	if err != nil {
 		return err
 	}
@@ -185,7 +186,7 @@ func (g *generator) setup(ctx context.Context) (err error) {
 				cacheable = true
 			)
 			if len(modules) > 0 {
-				includes, cacheable, err = g.resolveIncludes(ctx, path)
+				includes, cacheable, err = g.resolveIncludes(ctx, path, defaults.ProtoDir)
 				if err != nil {
 					return err
 				}
@@ -212,12 +213,7 @@ func (g *generator) setup(ctx context.Context) (err error) {
 }
 
 func (g *generator) getProtoIncludeFolders(modPath string) []string {
-	// Add default protoDir and default includeDirs
-	includePaths := []string{filepath.Join(modPath, g.protoDir)}
-	for _, dir := range g.opts.includeDirs {
-		includePaths = append(includePaths, filepath.Join(modPath, dir))
-	}
-	return includePaths
+	return []string{filepath.Join(modPath, g.protoDir)}
 }
 
 func (g *generator) findBufPath(modpath string) (string, error) {
@@ -254,7 +250,7 @@ func (g *generator) generateBufIncludeFolder(ctx context.Context, modpath string
 	return protoPath, nil
 }
 
-func (g *generator) resolveIncludes(ctx context.Context, path string) (protoIncludes, bool, error) {
+func (g *generator) resolveIncludes(ctx context.Context, path, protoDir string) (protoIncludes, bool, error) {
 	// Init paths with the global include paths for protoc
 	paths, err := protocGlobalInclude()
 	if err != nil {
@@ -270,7 +266,7 @@ func (g *generator) resolveIncludes(ctx context.Context, path string) (protoIncl
 		protoPath = filepath.Join(g.sdkDir, "proto")
 	} else {
 		// Check that the app/package proto directory exists
-		protoPath = filepath.Join(path, g.protoDir)
+		protoPath = filepath.Join(path, protoDir)
 		fi, err := os.Stat(protoPath)
 		if err != nil && !os.IsNotExist(err) {
 			return protoIncludes{}, false, err
@@ -330,7 +326,7 @@ func (g generator) updateBufModule(ctx context.Context) error {
 		// When a Buf config with name is available add it to app's dependencies
 		// or otherwise export the proto files to a vendor directory.
 		if includes.BufPath != "" {
-			if err := g.resolveBufDependency(ctx, pkgName, includes.BufPath); err != nil {
+			if err := g.resolveBufDependency(pkgName, includes.BufPath); err != nil {
 				return err
 			}
 		} else {
@@ -339,10 +335,16 @@ func (g generator) updateBufModule(ctx context.Context) error {
 			}
 		}
 	}
+	if err := g.buf.Update(
+		ctx,
+		filepath.Dir(g.appIncludes.BufPath),
+	); err != nil && !errors.Is(err, cosmosbuf.ErrProtoFilesNotFound) {
+		return err
+	}
 	return nil
 }
 
-func (g generator) resolveBufDependency(ctx context.Context, pkgName, bufPath string) error {
+func (g generator) resolveBufDependency(pkgName, bufPath string) error {
 	// Open the dependency Buf config to find the BSR package name
 	f, err := os.Open(bufPath)
 	if err != nil {
@@ -361,13 +363,13 @@ func (g generator) resolveBufDependency(ctx context.Context, pkgName, bufPath st
 	// When dependency package has a Buf config name try to add it to app's
 	// dependencies. Name is optional and defines the BSR package name.
 	if cfg.Name != "" {
-		return g.addBufDependency(ctx, cfg.Name)
+		return g.addBufDependency(cfg.Name)
 	}
 	// By default just vendor the proto package
 	return g.vendorProtoPackage(pkgName, filepath.Dir(bufPath))
 }
 
-func (g generator) addBufDependency(ctx context.Context, depName string) error {
+func (g generator) addBufDependency(depName string) error {
 	// Read app's Buf config
 	path := g.appIncludes.BufPath
 	bz, err := os.ReadFile(path)
@@ -414,7 +416,7 @@ func (g generator) addBufDependency(ctx context.Context, depName string) error {
 	)
 
 	// Update Buf lock so it contains the new dependency
-	return g.buf.Update(ctx, filepath.Dir(path), depName)
+	return nil
 }
 
 func (g generator) vendorProtoPackage(pkgName, protoPath string) (err error) {

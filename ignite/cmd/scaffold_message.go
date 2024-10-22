@@ -3,9 +3,8 @@ package ignitecmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/services/scaffolder"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/services/scaffolder"
 )
 
 const flagSigner = "signer"
@@ -92,6 +91,11 @@ func messageHandler(cmd *cobra.Command, args []string) error {
 	session := cliui.New(cliui.StartSpinnerWithText(statusScaffolding))
 	defer session.End()
 
+	cfg, _, err := getChainConfig(cmd)
+	if err != nil {
+		return err
+	}
+
 	cacheStorage, err := newCache(cmd)
 	if err != nil {
 		return err
@@ -114,17 +118,26 @@ func messageHandler(cmd *cobra.Command, args []string) error {
 		options = append(options, scaffolder.WithoutSimulation())
 	}
 
-	sc, err := scaffolder.New(appPath)
+	sc, err := scaffolder.New(cmd.Context(), appPath, cfg.Build.Proto.Path)
 	if err != nil {
 		return err
 	}
 
-	sm, err := sc.AddMessage(cmd.Context(), cacheStorage, placeholder.New(), module, args[0], args[1:], resFields, options...)
+	err = sc.AddMessage(cmd.Context(), module, args[0], args[1:], resFields, options...)
 	if err != nil {
 		return err
 	}
 
-	modificationsStr, err := sourceModificationToString(sm)
+	sm, err := sc.ApplyModifications()
+	if err != nil {
+		return err
+	}
+
+	if err := sc.PostScaffold(cmd.Context(), cacheStorage, false); err != nil {
+		return err
+	}
+
+	modificationsStr, err := sm.String()
 	if err != nil {
 		return err
 	}

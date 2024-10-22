@@ -1,15 +1,18 @@
 package ignitecmd
 
 import (
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/icons"
-	"github.com/ignite/cli/v28/ignite/services/chain"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/icons"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/services/chain"
 )
 
 const (
 	flagUseCache = "use-cache"
+	msgBufAuth   = "Generate ts-client depends on a 'buf.build' remote plugin, and as of August 1, 2024, Buf will begin limiting remote plugin requests from unauthenticated users on 'buf.build'. If you send more than ten unauthenticated requests per hour using remote plugins, you’ll start to see rate limit errors. Please authenticate before running ts-client command using 'buf registry login' command and follow the instructions. For more info, check https://buf.build/docs/generate/auth-required."
 )
 
 func NewGenerateTSClient() *cobra.Command {
@@ -48,7 +51,14 @@ func generateTSClientHandler(cmd *cobra.Command, _ []string) error {
 	session := cliui.New(cliui.StartSpinnerWithText(statusGenerating))
 	defer session.End()
 
-	c, err := newChainWithHomeFlags(
+	if err := session.AskConfirm(msgBufAuth); err != nil {
+		if errors.Is(err, promptui.ErrAbort) {
+			return errors.New("buf not auth")
+		}
+		return err
+	}
+
+	c, err := chain.NewWithHomeFlags(
 		cmd,
 		chain.WithOutputer(session),
 		chain.CollectEvents(session.EventBus()),
@@ -63,15 +73,8 @@ func generateTSClientHandler(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	output, err := cmd.Flags().GetString(flagOutput)
-	if err != nil {
-		return err
-	}
-
-	useCache, err := cmd.Flags().GetBool(flagUseCache)
-	if err != nil {
-		return err
-	}
+	output, _ := cmd.Flags().GetString(flagOutput)
+	useCache, _ := cmd.Flags().GetBool(flagUseCache)
 
 	var opts []chain.GenerateTarget
 	if flagGetEnableProtoVendor(cmd) {

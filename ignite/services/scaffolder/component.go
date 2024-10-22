@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis"
-	"github.com/ignite/cli/v28/ignite/templates/field/datatype"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis"
+	"github.com/ignite/cli/v29/ignite/templates/field/datatype"
 )
 
 const (
@@ -21,8 +21,6 @@ const (
 	componentMessage = "message"
 	componentQuery   = "query"
 	componentPacket  = "packet"
-
-	protoFolder = "proto"
 )
 
 // checkComponentValidity performs various checks common to all components to verify if it can be scaffolded.
@@ -109,8 +107,8 @@ func checkComponentCreated(appPath, moduleName string, compName multiformatname.
 }
 
 // checkCustomTypes returns error if one of the types is invalid.
-func checkCustomTypes(ctx context.Context, path, appName, module string, fields []string) error {
-	protoPath := filepath.Join(path, protoFolder, appName, module)
+func checkCustomTypes(ctx context.Context, appPath, appName, protoDir, module string, fields []string) error {
+	path := filepath.Join(appPath, protoDir, appName, module)
 	customFieldTypes := make([]string, 0)
 	for _, field := range fields {
 		ft, ok := fieldType(field)
@@ -122,7 +120,7 @@ func checkCustomTypes(ctx context.Context, path, appName, module string, fields 
 			customFieldTypes = append(customFieldTypes, ft)
 		}
 	}
-	return protoanalysis.HasMessages(ctx, protoPath, customFieldTypes...)
+	return protoanalysis.HasMessages(ctx, path, customFieldTypes...)
 }
 
 // checkForbiddenComponentName returns true if the name is forbidden as a component name.
@@ -130,7 +128,6 @@ func checkForbiddenComponentName(name multiformatname.Name) error {
 	// Check with names already used from the scaffolded code
 	switch name.LowerCase {
 	case
-		"oracle",
 		"logger",
 		"keeper",
 		"query",
@@ -195,32 +192,6 @@ func checkGoReservedWord(name string) error {
 		"uint8",
 		"uintptr":
 		return errors.Errorf("%s is a Go built-in identifier", name)
-	}
-	return nil
-}
-
-// checkForbiddenOracleFieldName returns true if the name is forbidden as an oracle field name.
-//
-// Deprecated: This function is no longer maintained.
-func checkForbiddenOracleFieldName(name string) error {
-	mfName, err := multiformatname.NewName(name, multiformatname.NoNumber)
-	if err != nil {
-		return err
-	}
-
-	// Check with names already used from the scaffolded code
-	switch mfName.UpperCase {
-	case
-		"CLIENTID",
-		"ORACLESCRIPTID",
-		"SOURCECHANNEL",
-		"CALLDATA",
-		"ASKCOUNT",
-		"MINCOUNT",
-		"FEELIMIT",
-		"PREPAREGAS",
-		"EXECUTEGAS":
-		return errors.Errorf("%s is used by Ignite scaffolder", name)
 	}
 	return nil
 }

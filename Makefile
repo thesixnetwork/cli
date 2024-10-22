@@ -20,6 +20,10 @@ build:
 	@-mkdir -p $(BUILD_FOLDER) 2> /dev/null
 	@go build $(BUILD_FLAGS) -o $(BUILD_FOLDER) ./...
 
+## prepare snapcraft config for release
+snapcraft:
+	@sed -i 's/{{version}}/'$(version)'/' packaging/snap/snapcraft.yaml
+
 ## mocks: generate mocks
 mocks:
 	@echo Generating mocks
@@ -49,7 +53,7 @@ govulncheck:
 format:
 	@echo Formatting...
 	@go run mvdan.cc/gofumpt -w .
-	@go run golang.org/x/tools/cmd/goimports -w -local github.com/ignite/cli/v28 .
+	@go run golang.org/x/tools/cmd/goimports -w -local github.com/ignite/cli/v29 .
 	@go run github.com/tbruyelle/mdgofmt/cmd/mdgofmt -w docs
 
 ## lint: Run Golang CI Lint.

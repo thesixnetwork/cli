@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosaccount"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosaccount"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 func NewAccountExport() *cobra.Command {
@@ -61,7 +61,7 @@ func accountExportHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := os.WriteFile(path, []byte(armored), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(armored), 0o600); err != nil {
 		return err
 	}
 

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	envtest "github.com/ignite/cli/v28/integration"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	envtest "github.com/ignite/cli/v29/integration"
 )
 
 func TestCosmosGenScaffoldComposables(t *testing.T) {
@@ -121,7 +121,6 @@ func TestCosmosGenScaffoldComposables(t *testing.T) {
 		"useCosmosAuthzV1Beta1",
 		"useCosmosBankV1Beta1",
 		"useCosmosBaseTendermintV1Beta1",
-		"useCosmosCrisisV1Beta1",
 		"useCosmosDistributionV1Beta1",
 		"useCosmosEvidenceV1Beta1",
 		"useCosmosFeegrantV1Beta1",

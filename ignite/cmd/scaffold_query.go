@@ -5,9 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/services/scaffolder"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/services/scaffolder"
 )
 
 const (
@@ -40,54 +39,57 @@ For detailed type information use ignite scaffold type --help.`,
 }
 
 func queryHandler(cmd *cobra.Command, args []string) error {
-	appPath := flagGetPath(cmd)
-
 	session := cliui.New(cliui.StartSpinnerWithText(statusScaffolding))
 	defer session.End()
 
-	// Get the module to add the type into
-	module, err := cmd.Flags().GetString(flagModule)
+	cfg, _, err := getChainConfig(cmd)
 	if err != nil {
 		return err
 	}
+
+	// Get the module to add the type into
+	module, _ := cmd.Flags().GetString(flagModule)
 
 	// Get request fields
-	resFields, err := cmd.Flags().GetStringSlice(flagResponse)
-	if err != nil {
-		return err
-	}
+	resFields, _ := cmd.Flags().GetStringSlice(flagResponse)
 
 	// Get description
-	desc, err := cmd.Flags().GetString(flagDescription)
-	if err != nil {
-		return err
-	}
+	desc, _ := cmd.Flags().GetString(flagDescription)
 	if desc == "" {
 		// Use a default description
 		desc = fmt.Sprintf("Query %s", args[0])
 	}
 
-	paginated, err := cmd.Flags().GetBool(flagPaginated)
-	if err != nil {
-		return err
-	}
+	var (
+		paginated, _ = cmd.Flags().GetBool(flagPaginated)
+		appPath      = flagGetPath(cmd)
+	)
 
 	cacheStorage, err := newCache(cmd)
 	if err != nil {
 		return err
 	}
 
-	sc, err := scaffolder.New(appPath)
+	sc, err := scaffolder.New(cmd.Context(), appPath, cfg.Build.Proto.Path)
 	if err != nil {
 		return err
 	}
 
-	sm, err := sc.AddQuery(cmd.Context(), cacheStorage, placeholder.New(), module, args[0], desc, args[1:], resFields, paginated)
+	err = sc.AddQuery(cmd.Context(), module, args[0], desc, args[1:], resFields, paginated)
 	if err != nil {
 		return err
 	}
 
-	modificationsStr, err := sourceModificationToString(sm)
+	sm, err := sc.ApplyModifications()
+	if err != nil {
+		return err
+	}
+
+	if err := sc.PostScaffold(cmd.Context(), cacheStorage, false); err != nil {
+		return err
+	}
+
+	modificationsStr, err := sm.String()
 	if err != nil {
 		return err
 	}

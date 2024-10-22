@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/safeconverter"
 )
 
 const (
@@ -64,7 +65,7 @@ func (c Client) GetNetInfo(ctx context.Context) (NetInfo, error) {
 	}
 
 	return NetInfo{
-		ConnectedPeers: int(peers),
+		ConnectedPeers: safeconverter.ToInt[uint64](peers),
 	}, nil
 }
 

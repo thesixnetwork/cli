@@ -6,37 +6,34 @@ import (
 
 	"github.com/emicklei/proto"
 
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
-	"github.com/ignite/cli/v28/ignite/templates/field"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/templates/field"
 )
 
 // Options ...
 type Options struct {
 	AppName      string
 	AppPath      string
+	ProtoDir     string
+	ProtoVer     string
 	ModuleName   string
 	ModulePath   string
 	TypeName     multiformatname.Name
 	MsgSigner    multiformatname.Name
 	Fields       field.Fields
-	Indexes      field.Fields
+	Index        field.Field
 	NoMessage    bool
 	NoSimulation bool
 	IsIBC        bool
 }
 
-// Validate that options are usable.
-func (opts *Options) Validate() error {
-	return nil
-}
-
-// ProtoPath returns the path to the proto folder within the generated app.
-func (opts *Options) ProtoPath(fname string) string {
-	return filepath.Join(opts.AppPath, "proto", opts.AppName, opts.ModuleName, fname)
+// ProtoFile returns the path to the proto folder within the generated app.
+func (opts *Options) ProtoFile(fname string) string {
+	return filepath.Join(opts.AppPath, opts.ProtoDir, opts.AppName, opts.ModuleName, opts.ProtoVer, fname)
 }
 
 // ProtoTypeImport Return the protobuf import statement for this type.
 func (opts *Options) ProtoTypeImport() *proto.Import {
-	return protoutil.NewImport(fmt.Sprintf("%s/%s/%s.proto", opts.AppName, opts.ModuleName, opts.TypeName.Snake))
+	return protoutil.NewImport(fmt.Sprintf("%s/%s/%s/%s.proto", opts.AppName, opts.ModuleName, opts.ProtoVer, opts.TypeName.Snake))
 }

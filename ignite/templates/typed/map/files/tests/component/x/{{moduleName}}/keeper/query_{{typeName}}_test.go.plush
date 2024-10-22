@@ -1,7 +1,7 @@
 package keeper_test
 
 import (
-    "strconv"
+	"strconv"
 	"testing"
 
 	"github.com/cosmos/cosmos-sdk/types/query"
@@ -11,15 +11,27 @@ import (
 
 	"<%= ModulePath %>/x/<%= ModuleName %>/types"
 	"<%= ModulePath %>/testutil/nullify"
+	"<%= ModulePath %>/x/<%= ModuleName %>/keeper"
 	keepertest "<%= ModulePath %>/testutil/keeper"
 )
 
 // Prevent strconv unused error
 var _ = strconv.IntSize
 
+func createN<%= TypeName.UpperCamel %>(keeper keeper.Keeper, ctx context.Context, n int) []types.<%= TypeName.UpperCamel %> {
+	items := make([]types.<%= TypeName.UpperCamel %>, n)
+	for i := range items {
+		items[i].<%= Index.Name.UpperCamel %> = <%= Index.ValueLoop() %>
+		
+		_ = keeper.<%= TypeName.UpperCamel %>.Set(ctx, items[i].<%= Index.Name.UpperCamel %>, items[i])
+	}
+	return items
+}
+
 func Test<%= TypeName.UpperCamel %>QuerySingle(t *testing.T) {
-	keeper, ctx := keepertest.<%= title(ModuleName) %>Keeper(t)
-	msgs := createN<%= TypeName.UpperCamel %>(keeper, ctx, 2)
+	k, ctx, _ := keepertest.<%= title(ModuleName) %>Keeper(t)
+	qs := keeper.NewQueryServerImpl(k)
+	msgs := createN<%= TypeName.UpperCamel %>(k, ctx, 2)
 	tests := []struct {
 		desc     string
 		request  *types.QueryGet<%= TypeName.UpperCamel %>Request
@@ -29,24 +41,21 @@ func Test<%= TypeName.UpperCamel %>QuerySingle(t *testing.T) {
 		{
 			desc:     "First",
 			request:  &types.QueryGet<%= TypeName.UpperCamel %>Request{
-			    <%= for (i, index) in Indexes { %><%= index.Name.UpperCamel %>: msgs[0].<%= index.Name.UpperCamel %>,
-                <% } %>
+			    <%= Index.Name.UpperCamel %>: msgs[0].<%= Index.Name.UpperCamel %>,
 			},
 			response: &types.QueryGet<%= TypeName.UpperCamel %>Response{<%= TypeName.UpperCamel %>: msgs[0]},
 		},
 		{
 			desc:     "Second",
 			request:  &types.QueryGet<%= TypeName.UpperCamel %>Request{
-			    <%= for (i, index) in Indexes { %><%= index.Name.UpperCamel %>: msgs[1].<%= index.Name.UpperCamel %>,
-                <% } %>
+			    <%= Index.Name.UpperCamel %>: msgs[1].<%= Index.Name.UpperCamel %>,
 			},
 			response: &types.QueryGet<%= TypeName.UpperCamel %>Response{<%= TypeName.UpperCamel %>: msgs[1]},
 		},
 		{
 			desc:    "KeyNotFound",
 			request: &types.QueryGet<%= TypeName.UpperCamel %>Request{
-			    <%= for (i, index) in Indexes { %><%= index.Name.UpperCamel %>:<%= index.ValueInvalidIndex() %>,
-                <% } %>
+				<%= Index.Name.UpperCamel %>: <%= Index.ValueInvalidIndex() %>,
 			},
 			err:     status.Error(codes.NotFound, "not found"),
 		},
@@ -57,7 +66,7 @@ func Test<%= TypeName.UpperCamel %>QuerySingle(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			response, err := keeper.<%= TypeName.UpperCamel %>(ctx, tc.request)
+			response, err := qs.Get<%= TypeName.UpperCamel %>(ctx, tc.request)
 			if tc.err != nil {
 				require.ErrorIs(t, err, tc.err)
 			} else {
@@ -72,8 +81,9 @@ func Test<%= TypeName.UpperCamel %>QuerySingle(t *testing.T) {
 }
 
 func Test<%= TypeName.UpperCamel %>QueryPaginated(t *testing.T) {
-	keeper, ctx := keepertest.<%= title(ModuleName) %>Keeper(t)
-	msgs := createN<%= TypeName.UpperCamel %>(keeper, ctx, 5)
+	k, ctx, _ := keepertest.<%= title(ModuleName) %>Keeper(t)
+	qs := keeper.NewQueryServerImpl(k)
+	msgs := createN<%= TypeName.UpperCamel %>(k, ctx, 5)
 
 	request := func(next []byte, offset, limit uint64, total bool) *types.QueryAll<%= TypeName.UpperCamel %>Request {
 		return &types.QueryAll<%= TypeName.UpperCamel %>Request{
@@ -88,7 +98,7 @@ func Test<%= TypeName.UpperCamel %>QueryPaginated(t *testing.T) {
 	t.Run("ByOffset", func(t *testing.T) {
 		step := 2
 		for i := 0; i < len(msgs); i += step {
-			resp, err := keeper.<%= TypeName.UpperCamel %>All(ctx, request(nil, uint64(i), uint64(step), false))
+			resp, err := qs.List<%= TypeName.UpperCamel %>(ctx, request(nil, uint64(i), uint64(step), false))
 			require.NoError(t, err)
 			require.LessOrEqual(t, len(resp.<%= TypeName.UpperCamel %>), step)
 			require.Subset(t,
@@ -101,7 +111,7 @@ func Test<%= TypeName.UpperCamel %>QueryPaginated(t *testing.T) {
 		step := 2
 		var next []byte
 		for i := 0; i < len(msgs); i += step {
-			resp, err := keeper.<%= TypeName.UpperCamel %>All(ctx, request(next, 0, uint64(step), false))
+			resp, err := qs.List<%= TypeName.UpperCamel %>(ctx, request(next, 0, uint64(step), false))
 			require.NoError(t, err)
 			require.LessOrEqual(t, len(resp.<%= TypeName.UpperCamel %>), step)
 			require.Subset(t,
@@ -112,7 +122,7 @@ func Test<%= TypeName.UpperCamel %>QueryPaginated(t *testing.T) {
 		}
 	})
 	t.Run("Total", func(t *testing.T) {
-		resp, err := keeper.<%= TypeName.UpperCamel %>All(ctx, request(nil, 0, 0, true))
+		resp, err := qs.List<%= TypeName.UpperCamel %>(ctx, request(nil, 0, 0, true))
 		require.NoError(t, err)
 		require.Equal(t, len(msgs), int(resp.Pagination.Total))
 		require.ElementsMatch(t,
@@ -121,7 +131,7 @@ func Test<%= TypeName.UpperCamel %>QueryPaginated(t *testing.T) {
 		)
 	})
 	t.Run("InvalidRequest", func(t *testing.T) {
-		_, err := keeper.<%= TypeName.UpperCamel %>All(ctx, nil)
+		_, err := qs.List<%= TypeName.UpperCamel %>(ctx, nil)
 		require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "invalid request"))
 	})
 }

@@ -2,11 +2,12 @@ package plugin
 
 import (
 	"context"
+	"sync"
 
 	hplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	v1 "github.com/ignite/cli/v28/ignite/services/plugin/grpc/v1"
+	v1 "github.com/ignite/cli/v29/ignite/services/plugin/grpc/v1"
 )
 
 var handshakeConfig = hplugin.HandshakeConfig{
@@ -108,19 +109,24 @@ func (c client) ExecuteHookCleanUp(ctx context.Context, h *ExecutedHook, api Cli
 func (c client) startClientAPIServer(api ClientAPI) (uint32, func()) {
 	var (
 		srv      *grpc.Server
+		m        sync.Mutex
 		brokerID = c.broker.NextId()
 	)
 
 	go c.broker.AcceptAndServe(brokerID, func(opts []grpc.ServerOption) *grpc.Server {
+		m.Lock()
+		defer m.Unlock()
 		srv = grpc.NewServer(opts...)
 		v1.RegisterClientAPIServiceServer(srv, &clientAPIServer{impl: api})
 		return srv
 	})
 
 	stop := func() {
+		m.Lock()
 		if srv != nil {
 			srv.Stop()
 		}
+		m.Unlock()
 	}
 
 	return brokerID, stop

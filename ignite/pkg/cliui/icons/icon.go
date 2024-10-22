@@ -1,14 +1,16 @@
 package icons
 
 import (
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/colors"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/colors"
 )
 
 var (
-	Earth = "🌍"
-	CD    = "💿"
-	User  = "👤"
-	Tada  = "🎉"
+	Earth        = "🌍"
+	CD           = "💿"
+	User         = "👤"
+	Tada         = "🎉"
+	Survey       = "💬"
+	Announcement = "🗣️"
 
 	// OK is an OK mark.
 	OK = colors.SprintFunc(colors.Green)("✔")

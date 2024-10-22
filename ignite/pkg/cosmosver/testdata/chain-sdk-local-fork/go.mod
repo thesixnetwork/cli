@@ -1,6 +1,6 @@
 module my-new-chain
 
-go 1.21
+go 1.23
 
 replace github.com/cosmos/cosmos-sdk => ./my/local/fork/cosmos-sdk
 
@@ -16,7 +16,7 @@ require (
 	cosmossdk.io/x/evidence v0.1.0
 	cosmossdk.io/x/feegrant v0.1.0
 	cosmossdk.io/x/upgrade v0.1.1
-	github.com/bufbuild/buf v1.27.2
+	github.com/bufbuild/buf v1.32.1
 	github.com/cometbft/cometbft v0.38.2
 	github.com/cosmos/cosmos-db v1.0.0
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3

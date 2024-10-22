@@ -11,13 +11,13 @@ import (
 	"github.com/gobuffalo/packd"
 	"github.com/gobuffalo/plush/v4"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/protoanalysis/protoutil"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/templates/field/plushhelpers"
-	"github.com/ignite/cli/v28/ignite/templates/testutil"
-	"github.com/ignite/cli/v28/ignite/templates/typed"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/pkg/protoanalysis/protoutil"
+	"github.com/ignite/cli/v29/ignite/pkg/xgenny"
+	"github.com/ignite/cli/v29/ignite/templates/field/plushhelpers"
+	"github.com/ignite/cli/v29/ignite/templates/testutil"
+	"github.com/ignite/cli/v29/ignite/templates/typed"
 )
 
 var (
@@ -34,6 +34,7 @@ func Box(box packd.Walker, opts *Options, g *genny.Generator) error {
 	}
 	ctx := plush.NewContext()
 	ctx.Set("ModuleName", opts.ModuleName)
+	ctx.Set("ProtoVer", opts.ProtoVer)
 	ctx.Set("AppName", opts.AppName)
 	ctx.Set("MsgName", opts.MsgName)
 	ctx.Set("MsgDesc", opts.MsgDesc)
@@ -44,8 +45,10 @@ func Box(box packd.Walker, opts *Options, g *genny.Generator) error {
 
 	plushhelpers.ExtendPlushContext(ctx)
 	g.Transformer(xgenny.Transformer(ctx))
+	g.Transformer(genny.Replace("{{protoDir}}", opts.ProtoDir))
 	g.Transformer(genny.Replace("{{appName}}", opts.AppName))
 	g.Transformer(genny.Replace("{{moduleName}}", opts.ModuleName))
+	g.Transformer(genny.Replace("{{protoVer}}", opts.ProtoVer))
 	g.Transformer(genny.Replace("{{msgName}}", opts.MsgName.Snake))
 
 	// Create the 'testutil' package with the test helpers
@@ -87,7 +90,7 @@ func NewGenerator(replacer placeholder.Replacer, opts *Options) (*genny.Generato
 //   - A service named "Msg" to exist in the proto file, it appends the RPCs inside it.
 func protoTxRPCModify(opts *Options) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := filepath.Join(opts.AppPath, "proto", opts.AppName, opts.ModuleName, "tx.proto")
+		path := opts.ProtoFile("tx.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -118,7 +121,7 @@ func protoTxRPCModify(opts *Options) genny.RunFn {
 
 func protoTxMessageModify(opts *Options) genny.RunFn {
 	return func(r *genny.Runner) error {
-		path := filepath.Join(opts.AppPath, "proto", opts.AppName, opts.ModuleName, "tx.proto")
+		path := opts.ProtoFile("tx.proto")
 		f, err := r.Disk.Find(path)
 		if err != nil {
 			return err
@@ -154,7 +157,7 @@ func protoTxMessageModify(opts *Options) genny.RunFn {
 			protoImports = append(protoImports, protoutil.NewImport(imp))
 		}
 		for _, f := range append(opts.ResFields.Custom(), opts.Fields.Custom()...) {
-			protoPath := fmt.Sprintf("%[1]v/%[2]v/%[3]v.proto", opts.AppName, opts.ModuleName, f)
+			protoPath := fmt.Sprintf("%[1]v/%[2]v/%[3]v/%[4]v.proto", opts.AppName, opts.ModuleName, opts.ProtoVer, f)
 			protoImports = append(protoImports, protoutil.NewImport(protoPath))
 		}
 		if err = protoutil.AddImports(protoFile, true, protoImports...); err != nil {
@@ -176,7 +179,7 @@ func typesCodecModify(replacer placeholder.Replacer, opts *Options) genny.RunFn 
 		replacementImport := `sdk "github.com/cosmos/cosmos-sdk/types"`
 		content := replacer.ReplaceOnce(f.String(), Placeholder, replacementImport)
 
-		templateRegisterImplementations := `registry.RegisterImplementations((*sdk.Msg)(nil),
+		templateRegisterImplementations := `registrar.RegisterImplementations((*sdk.Msg)(nil),
 	&Msg%[2]v{},
 )
 %[1]v`

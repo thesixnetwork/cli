@@ -11,17 +11,17 @@ import (
 
 	"github.com/moby/moby/pkg/archive"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/checksum"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/exec"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/dirchange"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
-	"github.com/ignite/cli/v28/ignite/pkg/goanalysis"
-	"github.com/ignite/cli/v28/ignite/pkg/gocmd"
-	"github.com/ignite/cli/v28/ignite/pkg/xstrings"
+	"github.com/ignite/cli/v29/ignite/pkg/cache"
+	"github.com/ignite/cli/v29/ignite/pkg/checksum"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/exec"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/dirchange"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/pkg/goanalysis"
+	"github.com/ignite/cli/v29/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/xstrings"
 )
 
 const (
@@ -29,6 +29,7 @@ const (
 	releaseChecksumKey           = "release_checksum"
 	modChecksumKey               = "go_mod_checksum"
 	buildDirchangeCacheNamespace = "build.dirchange"
+	consumerDevel                = "consumer_devel"
 )
 
 // Build builds and installs app binaries.
@@ -70,6 +71,17 @@ func (c *Chain) build(
 		if err := c.generateFromConfig(ctx, cacheStorage, generateClients); err != nil {
 			return err
 		}
+	}
+
+	cfg, err := c.Config()
+	if err != nil {
+		return err
+	}
+	if cfg.IsConsumerChain() {
+		// When building a non-release consumer chain (which is the case for this
+		// build() method), enable consumerDevel (see templates consumer_devel and
+		// consumer_final for more info).
+		buildTags = append(buildTags, consumerDevel)
 	}
 
 	buildFlags, err := c.preBuild(ctx, cacheStorage, buildTags...)

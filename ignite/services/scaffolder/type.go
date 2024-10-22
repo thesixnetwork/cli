@@ -6,19 +6,17 @@ import (
 
 	"github.com/gobuffalo/genny/v2"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/templates/field"
-	"github.com/ignite/cli/v28/ignite/templates/field/datatype"
-	modulecreate "github.com/ignite/cli/v28/ignite/templates/module/create"
-	"github.com/ignite/cli/v28/ignite/templates/typed"
-	"github.com/ignite/cli/v28/ignite/templates/typed/dry"
-	"github.com/ignite/cli/v28/ignite/templates/typed/list"
-	maptype "github.com/ignite/cli/v28/ignite/templates/typed/map"
-	"github.com/ignite/cli/v28/ignite/templates/typed/singleton"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/templates/field"
+	"github.com/ignite/cli/v29/ignite/templates/field/datatype"
+	modulecreate "github.com/ignite/cli/v29/ignite/templates/module/create"
+	"github.com/ignite/cli/v29/ignite/templates/typed"
+	"github.com/ignite/cli/v29/ignite/templates/typed/dry"
+	"github.com/ignite/cli/v29/ignite/templates/typed/list"
+	maptype "github.com/ignite/cli/v29/ignite/templates/typed/map"
+	"github.com/ignite/cli/v29/ignite/templates/typed/singleton"
 )
 
 // AddTypeOption configures options for AddType.
@@ -35,7 +33,7 @@ type addTypeOptions struct {
 	isMap       bool
 	isSingleton bool
 
-	indexes []string
+	index string
 
 	withoutMessage    bool
 	withoutSimulation bool
@@ -57,12 +55,11 @@ func ListType() AddTypeKind {
 	}
 }
 
-// MapType makes the type stored in a key-value convention in the storage with a custom
-// index option.
-func MapType(indexes ...string) AddTypeKind {
+// MapType makes the type stored in a key-value convention in the storage with an index option.
+func MapType(index string) AddTypeKind {
 	return func(o *addTypeOptions) {
 		o.isMap = true
-		o.indexes = indexes
+		o.index = index
 	}
 }
 
@@ -75,7 +72,7 @@ func SingletonType() AddTypeKind {
 
 // DryType only creates a type with a basic definition.
 func DryType() AddTypeKind {
-	return func(o *addTypeOptions) {}
+	return func(*addTypeOptions) {}
 }
 
 // TypeWithModule module to scaffold type into.
@@ -119,12 +116,10 @@ func TypeWithSigner(signer string) AddTypeOption {
 // if no module is given, the type will be scaffolded inside the app's default module.
 func (s Scaffolder) AddType(
 	ctx context.Context,
-	cacheStorage cache.Storage,
 	typeName string,
-	tracer *placeholder.Tracer,
 	kind AddTypeKind,
 	options ...AddTypeOption,
-) (sm xgenny.SourceModification, err error) {
+) error {
 	// apply options.
 	o := newAddTypeOptions(s.modpath.Package)
 	for _, apply := range append(options, AddTypeOption(kind)) {
@@ -133,43 +128,45 @@ func (s Scaffolder) AddType(
 
 	mfName, err := multiformatname.NewName(o.moduleName, multiformatname.NoNumber)
 	if err != nil {
-		return sm, err
+		return err
 	}
 	moduleName := mfName.LowerCase
 
 	name, err := multiformatname.NewName(typeName)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
-	if err := checkComponentValidity(s.path, moduleName, name, o.withoutMessage); err != nil {
-		return sm, err
+	if err := checkComponentValidity(s.appPath, moduleName, name, o.withoutMessage); err != nil {
+		return err
 	}
 
 	// Check and parse provided fields
-	if err := checkCustomTypes(ctx, s.path, s.modpath.Package, moduleName, o.fields); err != nil {
-		return sm, err
+	if err := checkCustomTypes(ctx, s.appPath, s.modpath.Package, s.protoDir, moduleName, o.fields); err != nil {
+		return err
 	}
 	tFields, err := parseTypeFields(o)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	mfSigner, err := multiformatname.NewName(o.signer)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
-	isIBC, err := isIBCModule(s.path, moduleName)
+	isIBC, err := isIBCModule(s.appPath, moduleName)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	var (
 		g    *genny.Generator
 		opts = &typed.Options{
 			AppName:      s.modpath.Package,
-			AppPath:      s.path,
+			AppPath:      s.appPath,
+			ProtoDir:     s.protoDir,
+			ProtoVer:     "v1", // TODO(@julienrbrt): possibly in the future add flag to specify custom proto version.
 			ModulePath:   s.modpath.RawPath,
 			ModuleName:   moduleName,
 			TypeName:     name,
@@ -184,42 +181,37 @@ func (s Scaffolder) AddType(
 	// Check and support MsgServer convention
 	gens, err = supportMsgServer(
 		gens,
-		tracer,
-		s.path,
+		s.runner.Tracer(),
 		&modulecreate.MsgServerOptions{
 			ModuleName: opts.ModuleName,
 			ModulePath: opts.ModulePath,
 			AppName:    opts.AppName,
 			AppPath:    opts.AppPath,
+			ProtoDir:   opts.ProtoDir,
+			ProtoVer:   opts.ProtoVer,
 		},
 	)
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	// create the type generator depending on the model
 	switch {
 	case o.isList:
-		g, err = list.NewGenerator(tracer, opts)
+		g, err = list.NewGenerator(s.Tracer(), opts)
 	case o.isMap:
-		g, err = mapGenerator(tracer, opts, o.indexes)
+		g, err = mapGenerator(s.Tracer(), opts, o.index)
 	case o.isSingleton:
-		g, err = singleton.NewGenerator(tracer, opts)
+		g, err = singleton.NewGenerator(s.Tracer(), opts)
 	default:
 		g, err = dry.NewGenerator(opts)
 	}
 	if err != nil {
-		return sm, err
+		return err
 	}
 
 	// run the generation
-	gens = append(gens, g)
-	sm, err = xgenny.RunWithValidation(tracer, gens...)
-	if err != nil {
-		return sm, err
-	}
-
-	return sm, finish(ctx, cacheStorage, opts.AppPath, s.modpath.RawPath)
+	return s.Run(append(gens, g)...)
 }
 
 // checkForbiddenTypeIndex returns true if the name is forbidden as a index name.
@@ -268,11 +260,19 @@ func parseTypeFields(opts addTypeOptions) (field.Fields, error) {
 }
 
 // mapGenerator returns the template generator for a map.
-func mapGenerator(replacer placeholder.Replacer, opts *typed.Options, indexes []string) (*genny.Generator, error) {
+func mapGenerator(replacer placeholder.Replacer, opts *typed.Options, index string) (*genny.Generator, error) {
 	// Parse indexes with the associated type
-	parsedIndexes, err := field.ParseFields(indexes, checkForbiddenTypeIndex)
+	if strings.Contains(index, ",") {
+		return nil, errors.Errorf("multi-index map isn't supported")
+	}
+
+	parsedIndexes, err := field.ParseFields([]string{index}, checkForbiddenTypeIndex)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(parsedIndexes) == 0 {
+		return nil, errors.Errorf("no index found, a valid map index must be provided")
 	}
 
 	// Indexes and type fields must be disjoint
@@ -280,12 +280,11 @@ func mapGenerator(replacer placeholder.Replacer, opts *typed.Options, indexes []
 	for _, name := range opts.Fields {
 		exists[name.Name.LowerCamel] = struct{}{}
 	}
-	for _, index := range parsedIndexes {
-		if _, ok := exists[index.Name.LowerCamel]; ok {
-			return nil, errors.Errorf("%s cannot simultaneously be an index and a field", index.Name.Original)
-		}
+
+	if _, ok := exists[parsedIndexes[0].Name.LowerCamel]; ok {
+		return nil, errors.Errorf("%s cannot simultaneously be an index and a field", parsedIndexes[0].Name.Original)
 	}
 
-	opts.Indexes = parsedIndexes
+	opts.Index = parsedIndexes[0]
 	return maptype.NewGenerator(replacer, opts)
 }

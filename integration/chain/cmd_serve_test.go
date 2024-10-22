@@ -9,44 +9,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/xos"
-	envtest "github.com/ignite/cli/v28/integration"
+	"github.com/ignite/cli/v29/ignite/pkg/xos"
+	envtest "github.com/ignite/cli/v29/integration"
 )
-
-func TestServeWithWasm(t *testing.T) {
-	t.Skip()
-
-	var (
-		env     = envtest.New(t)
-		app     = env.Scaffold("github.com/test/sgblog")
-		servers = app.RandomizeServerPorts()
-	)
-
-	env.Must(env.Exec("add Wasm module",
-		step.NewSteps(step.New(
-			step.Exec(envtest.IgniteApp, "s", "wasm", "--yes"),
-			step.Workdir(app.SourcePath()),
-		)),
-	))
-
-	var (
-		ctx, cancel       = context.WithTimeout(env.Ctx(), envtest.ServeTimeout)
-		isBackendAliveErr error
-	)
-	go func() {
-		defer cancel()
-		isBackendAliveErr = env.IsAppServed(ctx, servers.API)
-	}()
-	env.Must(app.Serve("should serve", envtest.ExecCtx(ctx)))
-
-	require.NoError(t, isBackendAliveErr, "app cannot get online in time")
-}
 
 func TestServeWithCustomHome(t *testing.T) {
 	var (
 		env     = envtest.New(t)
-		app     = env.Scaffold("github.com/test/sgblog2")
+		app     = env.Scaffold("github.com/test/sgbloga")
 		servers = app.RandomizeServerPorts()
 	)
 
@@ -66,7 +36,7 @@ func TestServeWithCustomHome(t *testing.T) {
 func TestServeWithConfigHome(t *testing.T) {
 	var (
 		env     = envtest.New(t)
-		app     = env.Scaffold("github.com/test/sgblog3")
+		app     = env.Scaffold("github.com/test/sgblogb")
 		servers = app.RandomizeServerPorts()
 	)
 
@@ -88,7 +58,7 @@ func TestServeWithCustomConfigFile(t *testing.T) {
 
 	var (
 		env = envtest.New(t)
-		app = env.Scaffold("github.com/test/sgblog4")
+		app = env.Scaffold("github.com/test/sgblogc")
 	)
 	// Move config
 	newConfig := "new_config.yml"
@@ -116,7 +86,7 @@ func TestServeWithCustomConfigFile(t *testing.T) {
 func TestServeWithName(t *testing.T) {
 	var (
 		env     = envtest.New(t)
-		app     = env.Scaffold("sgblog5")
+		app     = env.Scaffold("sgblogd")
 		servers = app.RandomizeServerPorts()
 	)
 

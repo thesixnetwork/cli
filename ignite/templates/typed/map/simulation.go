@@ -6,8 +6,8 @@ import (
 
 	"github.com/gobuffalo/genny/v2"
 
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/templates/typed"
+	"github.com/ignite/cli/v29/ignite/pkg/placeholder"
+	"github.com/ignite/cli/v29/ignite/templates/typed"
 )
 
 func moduleSimulationModify(replacer placeholder.Replacer, opts *typed.Options) genny.RunFn {
@@ -18,13 +18,11 @@ func moduleSimulationModify(replacer placeholder.Replacer, opts *typed.Options) 
 			return err
 		}
 
-		// Create a list of two different indexes and fields to use as sample
+		// Create a list of two different index/fields to use as sample
 		sampleIndexes := make([]string, 2)
 		for i := 0; i < 2; i++ {
 			sampleIndexes[i] = fmt.Sprintf("%s: sample.AccAddress(),\n", opts.MsgSigner.UpperCamel)
-			for _, index := range opts.Indexes {
-				sampleIndexes[i] += index.GenesisArgs(i)
-			}
+			sampleIndexes[i] += opts.Index.GenesisArgs(i)
 		}
 
 		// simulation genesis state

@@ -6,7 +6,7 @@ import (
 
 	hplugin "github.com/hashicorp/go-plugin"
 
-	"github.com/ignite/cli/v28/ignite/services/plugin"
+	"github.com/ignite/cli/v29/ignite/services/plugin"
 )
 
 type p struct{}
@@ -19,7 +19,7 @@ func (p) Manifest(context.Context) (*plugin.Manifest, error) {
 				Use:   "example-plugin",
 				Short: "Explain what the command is doing...",
 				Long:  "Long description goes here...",
-				Flags: []*plugin.Flag{
+				Flags: plugin.Flags{
 					{Name: "my-flag", Type: plugin.FlagTypeString, Usage: "my flag description"},
 				},
 				PlaceCommandUnder: "ignite",

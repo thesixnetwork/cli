@@ -6,6 +6,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -17,16 +18,16 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hplugin "github.com/hashicorp/go-plugin"
 
-	"github.com/ignite/cli/v28/ignite/config"
-	pluginsconfig "github.com/ignite/cli/v28/ignite/config/plugins"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/icons"
-	"github.com/ignite/cli/v28/ignite/pkg/env"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
-	"github.com/ignite/cli/v28/ignite/pkg/gocmd"
-	"github.com/ignite/cli/v28/ignite/pkg/xfilepath"
-	"github.com/ignite/cli/v28/ignite/pkg/xgit"
-	"github.com/ignite/cli/v28/ignite/pkg/xurl"
+	"github.com/ignite/cli/v29/ignite/config"
+	pluginsconfig "github.com/ignite/cli/v29/ignite/config/plugins"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/icons"
+	"github.com/ignite/cli/v29/ignite/pkg/env"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/pkg/gocmd"
+	"github.com/ignite/cli/v29/ignite/pkg/xfilepath"
+	"github.com/ignite/cli/v29/ignite/pkg/xgit"
+	"github.com/ignite/cli/v29/ignite/pkg/xurl"
 )
 
 // PluginsPath holds the plugin cache directory.
@@ -64,6 +65,9 @@ type Plugin struct {
 	isSharedHost bool
 
 	ev events.Bus
+
+	stdout io.Writer
+	stderr io.Writer
 }
 
 // Option configures Plugin.
@@ -73,6 +77,12 @@ type Option func(*Plugin)
 func CollectEvents(ev events.Bus) Option {
 	return func(p *Plugin) {
 		p.ev = ev
+	}
+}
+
+func RedirectStdout(w io.Writer) Option {
+	return func(p *Plugin) {
+		p.stdout = w
 	}
 }
 
@@ -117,6 +127,8 @@ func newPlugin(pluginsDir string, cp pluginsconfig.Plugin, options ...Option) *P
 	var (
 		p = &Plugin{
 			Plugin: cp,
+			stdout: os.Stdout,
+			stderr: os.Stderr,
 		}
 		pluginPath = cp.Path
 	)
@@ -130,8 +142,19 @@ func newPlugin(pluginsDir string, cp pluginsconfig.Plugin, options ...Option) *P
 		apply(p)
 	}
 
-	if strings.HasPrefix(pluginPath, "/") {
-		// This is a local plugin, check if the file exists
+	// This is a local plugin, check if the file exists
+	if pluginsconfig.IsLocalPath(pluginPath) {
+		// if directory is relative, make it absolute
+		if !filepath.IsAbs(pluginPath) {
+			pluginPathAbs, err := filepath.Abs(pluginPath)
+			if err != nil {
+				p.Error = errors.Errorf("failed to get absolute path of %s: %w", pluginPath, err)
+				return p
+			}
+
+			pluginPath = pluginPathAbs
+		}
+
 		st, err := os.Stat(pluginPath)
 		if err != nil {
 			p.Error = errors.Wrapf(err, "local app path %q not found", pluginPath)
@@ -145,6 +168,7 @@ func newPlugin(pluginsDir string, cp pluginsconfig.Plugin, options ...Option) *P
 		p.name = path.Base(pluginPath)
 		return p
 	}
+
 	// This is a remote plugin, parse the URL
 	if i := strings.LastIndex(pluginPath, "@"); i != -1 {
 		// path contains a reference
@@ -259,8 +283,8 @@ func (p *Plugin) load(ctx context.Context) {
 		HandshakeConfig:  HandshakeConfig(),
 		Plugins:          pluginMap,
 		Logger:           logger,
-		SyncStderr:       os.Stderr,
-		SyncStdout:       os.Stdout,
+		SyncStdout:       p.stdout,
+		SyncStderr:       p.stderr,
 		AllowedProtocols: []hplugin.Protocol{hplugin.ProtocolGRPC},
 	}
 
@@ -276,7 +300,7 @@ func (p *Plugin) load(ctx context.Context) {
 		p.client = hplugin.NewClient(cfg)
 	} else {
 		// Launch a new plugin process
-		cfg.Cmd = exec.Command(p.binaryPath())
+		cfg.Cmd = exec.Command(p.binaryPath()) //nolint:gosec
 		p.client = hplugin.NewClient(cfg)
 	}
 

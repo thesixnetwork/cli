@@ -1,51 +1,25 @@
 package scaffolder
 
 import (
-	"context"
 	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
 
-	evidencetypes "cosmossdk.io/x/evidence/types"
-	feegranttypes "cosmossdk.io/x/feegrant"
-	upgradetypes "cosmossdk.io/x/upgrade/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
-	authztypes "github.com/cosmos/cosmos-sdk/x/authz"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
-	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-	grouptypes "github.com/cosmos/cosmos-sdk/x/group"
-	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
-	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	capabilitytypes "github.com/cosmos/ibc-go/modules/capability/types"
-	transfertypes "github.com/cosmos/ibc-go/v8/modules/apps/transfer/types"
-	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
 	"github.com/gobuffalo/genny/v2"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cache"
-	appanalysis "github.com/ignite/cli/v28/ignite/pkg/cosmosanalysis/app"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/multiformatname"
-	"github.com/ignite/cli/v28/ignite/pkg/placeholder"
-	"github.com/ignite/cli/v28/ignite/pkg/validation"
-	"github.com/ignite/cli/v28/ignite/pkg/xgenny"
-	"github.com/ignite/cli/v28/ignite/templates/field"
-	"github.com/ignite/cli/v28/ignite/templates/module"
-	modulecreate "github.com/ignite/cli/v28/ignite/templates/module/create"
+	appanalysis "github.com/ignite/cli/v29/ignite/pkg/cosmosanalysis/app"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/multiformatname"
+	"github.com/ignite/cli/v29/ignite/pkg/validation"
+	"github.com/ignite/cli/v29/ignite/templates/field"
+	"github.com/ignite/cli/v29/ignite/templates/module"
+	modulecreate "github.com/ignite/cli/v29/ignite/templates/module/create"
 )
 
 const (
-	extrasImport  = "github.com/tendermint/spm-extras"
-	extrasVersion = "v0.1.0"
-	appPkg        = "app"
-	moduleDir     = "x"
-	modulePkg     = "module"
+	moduleDir = "x"
+	modulePkg = "module"
 )
 
 var (
@@ -53,68 +27,86 @@ var (
 	// A new module's name can't be equal to a reserved name.
 	// A map is used for direct comparing.
 	reservedNames = map[string]struct{}{
-		"account":                    {},
-		"block":                      {},
-		"broadcast":                  {},
-		"encode":                     {},
-		"multisign":                  {},
-		"sign":                       {},
-		"tx":                         {},
-		"txs":                        {},
-		ibcexported.ModuleName:       {},
-		transfertypes.ModuleName:     {},
-		authtypes.ModuleName:         {},
-		authztypes.ModuleName:        {},
-		banktypes.ModuleName:         {},
-		crisistypes.ModuleName:       {},
-		capabilitytypes.ModuleName:   {},
-		distributiontypes.ModuleName: {},
-		evidencetypes.ModuleName:     {},
-		feegranttypes.ModuleName:     {},
-		genutiltypes.ModuleName:      {},
-		govtypes.ModuleName:          {},
-		grouptypes.ModuleName:        {},
-		minttypes.ModuleName:         {},
-		paramstypes.ModuleName:       {},
-		slashingtypes.ModuleName:     {},
-		stakingtypes.ModuleName:      {},
-		upgradetypes.ModuleName:      {},
-		vestingtypes.ModuleName:      {},
+		"account":            {},
+		"block":              {},
+		"broadcast":          {},
+		"encode":             {},
+		"multisign":          {},
+		"sign":               {},
+		"tx":                 {},
+		"txs":                {},
+		"consumer":           {}, // ICS consumer module
+		"ccvconsumer":        {}, // ICS consumer module
+		"CCV":                {}, // ICS consumer module
+		"capability":         {},
+		"auth":               {},
+		"bank":               {},
+		"distribution":       {},
+		"staking":            {},
+		"slashing":           {},
+		"gov":                {},
+		"mint":               {},
+		"crisis":             {},
+		"ibc":                {},
+		"genutil":            {},
+		"evidence":           {},
+		"authz":              {},
+		"transfer":           {}, // IBC transfer
+		"interchainaccounts": {},
+		"feeibc":             {},
+		"feegrant":           {},
+		"params":             {},
+		"upgrade":            {},
+		"vesting":            {},
+		"circuit":            {},
+		"nft":                {},
+		"group":              {},
+		"consensus":          {},
+		"epochs":             {},
+		"protocolpool":       {},
 	}
 
 	// defaultStoreKeys are the names of the default store keys defined in a Cosmos-SDK app.
 	// A new module's name can't have a defined store key in its prefix because of potential store key collision.
 	defaultStoreKeys = []string{
-		ibcexported.StoreKey,
-		transfertypes.StoreKey,
-		authtypes.StoreKey,
-		banktypes.StoreKey,
-		capabilitytypes.StoreKey,
-		distributiontypes.StoreKey,
-		evidencetypes.StoreKey,
-		feegranttypes.StoreKey,
-		govtypes.StoreKey,
-		grouptypes.StoreKey,
-		minttypes.StoreKey,
-		paramstypes.StoreKey,
-		slashingtypes.StoreKey,
-		stakingtypes.StoreKey,
-		upgradetypes.StoreKey,
+		"capability",
+		"acc", // auth module
+		"bank",
+		"distribution",
+		"staking",
+		"slashing",
+		"gov",
+		"mint",
+		"crisis",
+		"ibc",
+		"transfer", // IBC transfer
+		"feeibc",
+		"evidence",
+		"feegrant",
+		"params",
+		"upgrade",
+		"circuit",
+		"nft",
+		"group",
+		"consensus",
 	}
 )
 
 // moduleCreationOptions holds options for creating a new module.
 type moduleCreationOptions struct {
-	// ibc true if the module is an ibc module
+	// ibc true if the module is an ibc module.
 	ibc bool
 
-	// params list of parameters
+	// params list of parameters.
 	params []string
 
-	// ibcChannelOrdering ibc channel ordering
+	// moduleConfigs list of module configs.
+	moduleConfigs []string
+
+	// ibcChannelOrdering ibc channel ordering.
 	ibcChannelOrdering string
 
-	// dependencies list of module dependencies
+	// dependencies list of module dependencies.
 	dependencies []modulecreate.Dependency
 }
 
@@ -132,6 +124,13 @@ func WithIBC() ModuleCreationOption {
 func WithParams(params []string) ModuleCreationOption {
 	return func(m *moduleCreationOptions) {
 		m.params = params
+	}
+}
+
+// WithModuleConfigs scaffolds a module with module configs.
+func WithModuleConfigs(moduleConfigs []string) ModuleCreationOption {
+	return func(m *moduleCreationOptions) {
+		m.moduleConfigs = moduleConfigs
 	}
 }
 
@@ -158,30 +157,27 @@ func WithDependencies(dependencies []modulecreate.Dependency) ModuleCreationOpti
 
 // CreateModule creates a new empty module in the scaffolded app.
 func (s Scaffolder) CreateModule(
-	ctx context.Context,
-	cacheStorage cache.Storage,
-	tracer *placeholder.Tracer,
 	moduleName string,
 	options ...ModuleCreationOption,
-) (sm xgenny.SourceModification, err error) {
+) error {
 	mfName, err := multiformatname.NewName(moduleName, multiformatname.NoNumber)
 	if err != nil {
-		return sm, err
+		return err
 	}
 	moduleName = mfName.LowerCase
 
 	// Check if the module name is valid
-	if err := checkModuleName(s.path, moduleName); err != nil {
-		return sm, err
+	if err := checkModuleName(s.appPath, moduleName); err != nil {
+		return err
 	}
 
 	// Check if the module already exist
-	ok, err := moduleExists(s.path, moduleName)
+	ok, err := moduleExists(s.appPath, moduleName)
 	if err != nil {
-		return sm, err
+		return err
 	}
 	if ok {
-		return sm, errors.Errorf("the module %v already exists", moduleName)
+		return errors.Errorf("the module %v already exists", moduleName)
 	}
 
 	// Apply the options
@@ -193,20 +189,29 @@ func (s Scaffolder) CreateModule(
 	// Parse params with the associated type
 	params, err := field.ParseFields(creationOpts.params, checkForbiddenTypeIndex)
 	if err != nil {
-		return sm, err
+		return err
+	}
+
+	// Parse configs with the associated type
+	configs, err := field.ParseFields(creationOpts.moduleConfigs, checkForbiddenTypeIndex)
+	if err != nil {
+		return err
 	}
 
 	// Check dependencies
-	if err := checkDependencies(creationOpts.dependencies, s.path); err != nil {
-		return sm, err
+	if err := checkDependencies(creationOpts.dependencies, s.appPath); err != nil {
+		return err
 	}
 
 	opts := &modulecreate.CreateOptions{
 		ModuleName:   moduleName,
 		ModulePath:   s.modpath.RawPath,
 		Params:       params,
+		Configs:      configs,
 		AppName:      s.modpath.Package,
-		AppPath:      s.path,
+		AppPath:      s.appPath,
+		ProtoDir:     s.protoDir,
+		ProtoVer:     "v1", // TODO(@julienrbrt): possibly in the future add flag to specify custom proto version.
 		IsIBC:        creationOpts.ibc,
 		IBCOrdering:  creationOpts.ibcChannelOrdering,
 		Dependencies: creationOpts.dependencies,
@@ -214,32 +219,26 @@ func (s Scaffolder) CreateModule(
 
 	g, err := modulecreate.NewGenerator(opts)
 	if err != nil {
-		return sm, err
+		return err
 	}
 	gens := []*genny.Generator{g}
 
 	// Scaffold IBC module
 	if opts.IsIBC {
-		g, err = modulecreate.NewIBC(tracer, opts)
+		g, err = modulecreate.NewIBC(s.Tracer(), opts)
 		if err != nil {
-			return sm, err
+			return err
 		}
 		gens = append(gens, g)
 	}
-	sm, err = xgenny.RunWithValidation(tracer, gens...)
-	if err != nil {
-		return sm, err
-	}
+	gens = append(gens, modulecreate.NewAppModify(s.Tracer(), opts))
 
-	// Modify app.go to register the module
-	newSourceModification, runErr := xgenny.RunWithValidation(tracer, modulecreate.NewAppModify(tracer, opts))
-	sm.Merge(newSourceModification)
+	err = s.Run(gens...)
 	var validationErr validation.Error
-	if runErr != nil && !errors.As(runErr, &validationErr) {
-		return sm, runErr
+	if err != nil && !errors.As(err, &validationErr) {
+		return err
 	}
-
-	return sm, finish(ctx, cacheStorage, opts.AppPath, s.modpath.RawPath)
+	return nil
 }
 
 // moduleExists checks if the module exists in the app.

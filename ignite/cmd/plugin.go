@@ -10,15 +10,16 @@ import (
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 
-	pluginsconfig "github.com/ignite/cli/v28/ignite/config/plugins"
-	"github.com/ignite/cli/v28/ignite/pkg/clictx"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/icons"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosanalysis"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodule"
-	"github.com/ignite/cli/v28/ignite/pkg/xgit"
-	"github.com/ignite/cli/v28/ignite/services/plugin"
+	pluginsconfig "github.com/ignite/cli/v29/ignite/config/plugins"
+	"github.com/ignite/cli/v29/ignite/pkg/clictx"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/icons"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosanalysis"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodule"
+	"github.com/ignite/cli/v29/ignite/pkg/xgit"
+	"github.com/ignite/cli/v29/ignite/services/chain"
+	"github.com/ignite/cli/v29/ignite/services/plugin"
 )
 
 const (
@@ -31,7 +32,7 @@ var plugins []*plugin.Plugin
 
 // LoadPlugins tries to load all the plugins found in configurations.
 // If no configurations found, it returns w/o error.
-func LoadPlugins(ctx context.Context, cmd *cobra.Command) error {
+func LoadPlugins(ctx context.Context, cmd *cobra.Command, session *cliui.Session) error {
 	var (
 		rootCmd        = cmd.Root()
 		pluginsConfigs []pluginsconfig.Plugin
@@ -52,9 +53,6 @@ func LoadPlugins(ctx context.Context, cmd *cobra.Command) error {
 	if len(pluginsConfigs) == 0 {
 		return nil
 	}
-
-	session := cliui.New(cliui.WithStdout(os.Stdout))
-	defer session.End()
 
 	uniquePlugins := pluginsconfig.RemoveDuplicates(pluginsConfigs)
 	plugins, err = plugin.Load(ctx, uniquePlugins, plugin.CollectEvents(session.EventBus()))
@@ -182,6 +180,7 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 	}
 
 	newExecutedHook := func(hook *plugin.Hook, cmd *cobra.Command, args []string) *plugin.ExecutedHook {
+		hook.ImportFlags(cmd)
 		execHook := &plugin.ExecutedHook{
 			Hook: hook,
 			ExecutedCommand: &plugin.ExecutedCommand{
@@ -190,10 +189,25 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 				Args:   args,
 				OsArgs: os.Args,
 				With:   p.With,
+				Flags:  hook.Flags,
 			},
 		}
 		execHook.ExecutedCommand.ImportFlags(cmd)
 		return execHook
+	}
+
+	for _, f := range hook.Flags {
+		var fs *flag.FlagSet
+		if f.Persistent {
+			fs = cmd.PersistentFlags()
+		} else {
+			fs = cmd.Flags()
+		}
+
+		if err := f.ExportToFlagSet(fs); err != nil {
+			p.Error = errors.Errorf("can't attach hook flags %q to command %q", hook.Flags, hook.PlaceHookOn)
+			return
+		}
 	}
 
 	preRun := cmd.PreRunE
@@ -205,15 +219,14 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 			}
 		}
 
-		// Get chain when the plugin runs inside an blockchain app
-		c, err := newChainWithHomeFlags(cmd)
-		if err != nil && !errors.Is(err, gomodule.ErrGoModNotFound) {
+		api, err := newAppClientAPI(cmd)
+		if err != nil {
 			return err
 		}
 
 		ctx := cmd.Context()
 		execHook := newExecutedHook(hook, cmd, args)
-		err = p.Interface.ExecuteHookPre(ctx, execHook, plugin.NewClientAPI(plugin.WithChain(c)))
+		err = p.Interface.ExecuteHookPre(ctx, execHook, api)
 		if err != nil {
 			return errors.Errorf("app %q ExecuteHookPre() error: %w", p.Path, err)
 		}
@@ -221,21 +234,19 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 	}
 
 	runCmd := cmd.RunE
-
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if runCmd != nil {
 			err := runCmd(cmd, args)
-			// if the command has failed the `PostRun` will not execute. here we execute the cleanup step before returnning.
+			// if the command has failed the `PostRun` will not execute. here we execute the cleanup step before returning.
 			if err != nil {
-				// Get chain when the plugin runs inside an blockchain app
-				c, err := newChainWithHomeFlags(cmd)
-				if err != nil && !errors.Is(err, gomodule.ErrGoModNotFound) {
+				api, err := newAppClientAPI(cmd)
+				if err != nil {
 					return err
 				}
 
 				ctx := cmd.Context()
 				execHook := newExecutedHook(hook, cmd, args)
-				err = p.Interface.ExecuteHookCleanUp(ctx, execHook, plugin.NewClientAPI(plugin.WithChain(c)))
+				err = p.Interface.ExecuteHookCleanUp(ctx, execHook, api)
 				if err != nil {
 					cmd.Printf("app %q ExecuteHookCleanUp() error: %v", p.Path, err)
 				}
@@ -249,9 +260,8 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 
 	postCmd := cmd.PostRunE
 	cmd.PostRunE = func(cmd *cobra.Command, args []string) error {
-		// Get chain when the plugin runs inside an blockchain app
-		c, err := newChainWithHomeFlags(cmd)
-		if err != nil && !errors.Is(err, gomodule.ErrGoModNotFound) {
+		api, err := newAppClientAPI(cmd)
+		if err != nil {
 			return err
 		}
 
@@ -259,7 +269,7 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 		execHook := newExecutedHook(hook, cmd, args)
 
 		defer func() {
-			err := p.Interface.ExecuteHookCleanUp(ctx, execHook, plugin.NewClientAPI(plugin.WithChain(c)))
+			err := p.Interface.ExecuteHookCleanUp(ctx, execHook, api)
 			if err != nil {
 				cmd.Printf("app %q ExecuteHookCleanUp() error: %v", p.Path, err)
 			}
@@ -273,7 +283,7 @@ func linkPluginHook(rootCmd *cobra.Command, p *plugin.Plugin, hook *plugin.Hook)
 			}
 		}
 
-		err = p.Interface.ExecuteHookPost(ctx, execHook, plugin.NewClientAPI(plugin.WithChain(c)))
+		err = p.Interface.ExecuteHookPost(ctx, execHook, api)
 		if err != nil {
 			return errors.Errorf("app %q ExecuteHookPost() error : %w", p.Path, err)
 		}
@@ -336,9 +346,8 @@ func linkPluginCmd(rootCmd *cobra.Command, p *plugin.Plugin, pluginCmd *plugin.C
 		newCmd.RunE = func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return clictx.Do(ctx, func() error {
-				// Get chain when the plugin runs inside an blockchain app
-				c, err := newChainWithHomeFlags(cmd)
-				if err != nil && !errors.Is(err, gomodule.ErrGoModNotFound) {
+				api, err := newAppClientAPI(cmd)
+				if err != nil {
 					return err
 				}
 
@@ -351,7 +360,7 @@ func linkPluginCmd(rootCmd *cobra.Command, p *plugin.Plugin, pluginCmd *plugin.C
 					With:   p.With,
 				}
 				execCmd.ImportFlags(cmd)
-				err = p.Interface.Execute(ctx, execCmd, plugin.NewClientAPI(plugin.WithChain(c)))
+				err = p.Interface.Execute(ctx, execCmd, api)
 
 				// NOTE(tb): This pause gives enough time for go-plugin to sync the
 				// output from stdout/stderr of the plugin. Without that pause, this
@@ -407,7 +416,7 @@ func NewAppList() *cobra.Command {
 		Use:   "list",
 		Short: "List installed apps",
 		Long:  "Prints status and information of all installed Ignite Apps.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			s := cliui.New(cliui.WithStdout(os.Stdout))
 			return printPlugins(cmd.Context(), s)
 		},
@@ -424,25 +433,15 @@ func NewAppUpdate() *cobra.Command {
 If no path is specified all declared apps are updated.`,
 		Example: "ignite app update github.com/org/my-app/",
 		Args:    cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				// update all plugins
-				err := plugin.Update(plugins...)
-				if err != nil {
-					return err
-				}
-				cmd.Println("All apps updated.")
-				return nil
+				return plugin.Update(plugins...)
 			}
 			// find the plugin to update
 			for _, p := range plugins {
-				if p.Path == args[0] {
-					err := plugin.Update(p)
-					if err != nil {
-						return err
-					}
-					cmd.Printf("App %q updated.\n", p.Path)
-					return nil
+				if p.HasPath(args[0]) {
+					return plugin.Update(p)
 				}
 			}
 			return errors.Errorf("App %q not found", args[0])
@@ -479,7 +478,7 @@ Respects key value pairs declared after the app path to be added to the generate
 			}
 
 			for _, p := range conf.Apps {
-				if p.Path == args[0] {
+				if p.HasPath(args[0]) {
 					return errors.Errorf("app %s is already installed", args[0])
 				}
 			}
@@ -507,7 +506,6 @@ Respects key value pairs declared after the app path to be added to the generate
 				p.With[kv[0]] = kv[1]
 			}
 
-			session.StartSpinner("Loading app")
 			plugins, err := plugin.Load(cmd.Context(), []pluginsconfig.Plugin{p}, pluginsOptions...)
 			if err != nil {
 				return err
@@ -562,7 +560,7 @@ func NewAppUninstall() *cobra.Command {
 
 			removed := false
 			for i, cp := range conf.Apps {
-				if cp.Path == args[0] {
+				if cp.HasPath(args[0]) {
 					conf.Apps = append(conf.Apps[:i], conf.Apps[i+1:]...)
 					removed = true
 					break
@@ -648,7 +646,7 @@ func NewAppDescribe() *cobra.Command {
 			ctx := cmd.Context()
 
 			for _, p := range plugins {
-				if p.Path == args[0] {
+				if p.HasPath(args[0]) {
 					manifest, err := p.Interface.Manifest(ctx)
 					if err != nil {
 						return errors.Errorf("error while loading app manifest: %w", err)
@@ -708,6 +706,21 @@ func printPlugins(ctx context.Context, session *cliui.Session) error {
 		return errors.Errorf("error while printing apps: %w", err)
 	}
 	return nil
+}
+
+func newAppClientAPI(cmd *cobra.Command) (plugin.ClientAPI, error) {
+	// Get chain when the plugin runs inside an blockchain app
+	c, err := chain.NewWithHomeFlags(cmd)
+	if err != nil && !errors.Is(err, gomodule.ErrGoModNotFound) {
+		return nil, err
+	}
+
+	var options []plugin.APIOption
+	if c != nil {
+		options = append(options, plugin.WithChain(c))
+	}
+
+	return plugin.NewClientAPI(options...), nil
 }
 
 func flagSetPluginsGlobal() *flag.FlagSet {

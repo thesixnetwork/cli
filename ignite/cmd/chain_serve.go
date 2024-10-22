@@ -6,17 +6,17 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	cmdmodel "github.com/ignite/cli/v28/ignite/cmd/model"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	uilog "github.com/ignite/cli/v28/ignite/pkg/cliui/log"
-	cliuimodel "github.com/ignite/cli/v28/ignite/pkg/cliui/model"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/events"
-	"github.com/ignite/cli/v28/ignite/services/chain"
+	cmdmodel "github.com/ignite/cli/v29/ignite/cmd/model"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	uilog "github.com/ignite/cli/v29/ignite/pkg/cliui/log"
+	cliuimodel "github.com/ignite/cli/v29/ignite/pkg/cliui/model"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/events"
+	"github.com/ignite/cli/v29/ignite/services/chain"
 )
 
 const (
+	flagVerbose         = "verbose"
 	flagConfig          = "config"
 	flagForceReset      = "force-reset"
 	flagGenerateClients = "generate-clients"
@@ -71,12 +71,12 @@ production, you may want to run "appd start" manually.
 	c.Flags().AddFlagSet(flagSetHome())
 	c.Flags().AddFlagSet(flagSetCheckDependencies())
 	c.Flags().AddFlagSet(flagSetSkipProto())
-	c.Flags().BoolP("verbose", "v", false, "verbose output")
+	c.Flags().AddFlagSet(flagSetVerbose())
 	c.Flags().BoolP(flagForceReset, "f", false, "force reset of the app state on start and every source change")
 	c.Flags().BoolP(flagResetOnce, "r", false, "reset the app state once on init")
 	c.Flags().Bool(flagGenerateClients, false, "generate code for the configured clients on reset or source code change")
 	c.Flags().Bool(flagQuitOnFail, false, "quit program if the app fails to start")
-	c.Flags().StringSlice(flagBuildTags, []string{cosmosver.DefaultVersion().String()}, "parameters to build the chain binary")
+	c.Flags().StringSlice(flagBuildTags, []string{}, "parameters to build the chain binary")
 
 	return c
 }
@@ -135,16 +135,13 @@ func chainServe(cmd *cobra.Command, session *cliui.Session) error {
 	}
 
 	// check if custom config is defined
-	config, err := cmd.Flags().GetString(flagConfig)
-	if err != nil {
-		return err
-	}
+	config, _ := cmd.Flags().GetString(flagConfig)
 	if config != "" {
 		chainOption = append(chainOption, chain.ConfigFile(config))
 	}
 
 	// create the chain
-	c, err := newChainWithHomeFlags(cmd, chainOption...)
+	c, err := chain.NewWithHomeFlags(cmd, chainOption...)
 	if err != nil {
 		return err
 	}
@@ -157,47 +154,27 @@ func chainServe(cmd *cobra.Command, session *cliui.Session) error {
 	// serve the chain
 	var serveOptions []chain.ServeOption
 
-	forceUpdate, err := cmd.Flags().GetBool(flagForceReset)
-	if err != nil {
-		return err
-	}
-
+	forceUpdate, _ := cmd.Flags().GetBool(flagForceReset)
 	if forceUpdate {
 		serveOptions = append(serveOptions, chain.ServeForceReset())
 	}
 
-	resetOnce, err := cmd.Flags().GetBool(flagResetOnce)
-	if err != nil {
-		return err
-	}
-
+	resetOnce, _ := cmd.Flags().GetBool(flagResetOnce)
 	if resetOnce {
 		serveOptions = append(serveOptions, chain.ServeResetOnce())
 	}
 
-	quitOnFail, err := cmd.Flags().GetBool(flagQuitOnFail)
-	if err != nil {
-		return err
-	}
-
+	quitOnFail, _ := cmd.Flags().GetBool(flagQuitOnFail)
 	if quitOnFail {
 		serveOptions = append(serveOptions, chain.QuitOnFail())
 	}
 
-	generateClients, err := cmd.Flags().GetBool(flagGenerateClients)
-	if err != nil {
-		return err
-	}
-
+	generateClients, _ := cmd.Flags().GetBool(flagGenerateClients)
 	if generateClients {
 		serveOptions = append(serveOptions, chain.GenerateClients())
 	}
 
-	buildTags, err := cmd.Flags().GetStringSlice(flagBuildTags)
-	if err != nil {
-		return err
-	}
-
+	buildTags, _ := cmd.Flags().GetStringSlice(flagBuildTags)
 	if len(buildTags) > 0 {
 		serveOptions = append(serveOptions, chain.BuildTags(buildTags...))
 	}

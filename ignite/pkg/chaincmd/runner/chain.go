@@ -12,10 +12,10 @@ import (
 
 	"github.com/cenkalti/backoff"
 
-	"github.com/ignite/cli/v28/ignite/pkg/chaincmd"
-	"github.com/ignite/cli/v28/ignite/pkg/cmdrunner/step"
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosver"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/chaincmd"
+	"github.com/ignite/cli/v29/ignite/pkg/cmdrunner/step"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosver"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 // Start starts the blockchain.
@@ -44,6 +44,18 @@ func NewKV(key, value string) KV {
 }
 
 var gentxRe = regexp.MustCompile(`(?m)"(.+?)"`)
+
+func (r Runner) InPlace(ctx context.Context, newChainID, newOperatorAddress string, options ...chaincmd.InPlaceOption) error {
+	runOptions := runOptions{
+		stdout: os.Stdout,
+		stderr: os.Stderr,
+	}
+	return r.run(
+		ctx,
+		runOptions,
+		r.chainCmd.TestnetInPlaceCommand(newChainID, newOperatorAddress, options...),
+	)
+}
 
 // Gentx generates a genesis tx carrying a self delegation.
 func (r Runner) Gentx(
@@ -240,7 +252,7 @@ func (r Runner) Export(ctx context.Context, exportedFile string) error {
 	}
 
 	// Save the new state
-	return os.WriteFile(exportedFile, exportedState, 0o644)
+	return os.WriteFile(exportedFile, exportedState, 0o600)
 }
 
 // EventSelector is used to query events.

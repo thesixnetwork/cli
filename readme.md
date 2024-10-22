@@ -24,6 +24,7 @@
   </a>
     <img alt="Test Status" src="https://github.com/ignite/cli/workflows/Test/badge.svg" />
     <img alt="Lint Status" src="https://github.com/ignite/cli/workflows/Lint/badge.svg" />
+    <a href="https://discord.com/invite/ignite" target="_blank"><img alt="Discord" src="https://img.shields.io/discord/893126937067802685"></a>
 </div>
 
 ![Ignite CLI](./assets/ignite-cli.png)
@@ -37,14 +38,49 @@ so you can focus on writing business logic.
 
 ## Quick start
 
-Open Ignite CLI [in your web
-browser](https://gitpod.io/#https://github.com/ignite/cli/tree/v0.25.2) (or open
-[nightly version](https://gitpod.io/#https://github.com/ignite/cli)), or
-[install the latest release](https://docs.ignite.com/welcome/install).
+Ignite CLI can be installed using popular package managers such as Homebrew and Snap, making it easy to stay up-to-date with the latest versions. These package manager installations are maintained regularly for both macOS and GNU/Linux. For those who prefer manual installation or need to set up a development environment, additional instructions are provided at the end of this section.
+
+### Installation
+
+Install Ignite using [Homebrew](https://formulae.brew.sh/formula/ignite) on macOS and GNU/Linux:
+
+```sh
+brew install ignite
+```
+
+Or using Snap on GNU/Linux:
+
+```sh
+snap install ignite --classic
+```
+
+Or manually using the following command:
+
+```sh
+curl https://get.ignite.com/cli! | bash
+```
+
+<details>
+  <summary>Troubleshoot</summary>
+
+If Ignite doesn't automatically move to your `/usr/local/bin` directory, use the following command:
+
+```sh
+sudo mv ignite /usr/local/bin
+```
+
+If you encounter an error, you may need to create the `/usr/local/bin` directory and set the necessary permissions:
+
+```sh
+mkdir /usr/local/bin
+sudo chown -R $(whoami) /usr/local/bin
+```
+
+</details>
 
 To create and start a blockchain:
 
-```bash
+```sh
 ignite scaffold chain mars
 
 cd mars
@@ -52,12 +88,92 @@ cd mars
 ignite chain serve
 ```
 
+The instructions for installing Ignite CLI manually and configuring your system are provided below.
+
+<details>
+  <summary>View development setup instructions</summary>
+
+#### Supported Operating Systems:
+
+- GNU/Linux
+- macOS
+
+#### Install Go:
+
+1. Install the latest version of Go.
+2. Download the release suitable for your system.
+3. Follow the installation instructions.
+
+**Note:** We recommend not using `brew` to install Go.
+
+#### Add the Go bin Directory to Your PATH:
+
+1. Edit your `~/.bashrc` file and add the following line:
+
+   ```sh
+   export PATH=$PATH:$(go env GOPATH)/bin
+   ```
+
+2. Apply the changes:
+
+   ```sh
+   source ~/.bashrc
+   ```
+
+#### Remove Existing Ignite CLI Installations:
+
+1. Remove the Ignite CLI binary:
+
+   ```sh
+   rm $(which ignite)
+   ```
+
+   You may need to run this with `sudo`.
+
+2. Repeat the step until all Ignite CLI installations are removed.
+
+#### Install Ignite CLI:
+
+```sh
+curl https://get.ignite.com/cli! | bash
+```
+
+#### Clone the Ignite CLI Repo:
+
+1. Clone the repository:
+
+   ```sh
+   git clone --depth=1 git@github.com:ignite/cli.git
+   ```
+
+2. Change to the `cli` directory:
+
+   ```sh
+   cd cli
+   ```
+
+#### Run make install:
+
+```sh
+make install
+```
+
+#### Verify Your Ignite CLI Version:
+
+```sh
+ignite version
+```
+
+</details>
+
+Alternatively, you can open Ignite CLI directly in your web browser via [Gitpod](https://gitpod.io/#https://github.com/ignite/cli).
+
 ## Documentation
 
 To learn how to use Ignite CLI, check out the [Ignite CLI
 docs](https://docs.ignite.com). To learn more about how to build blockchain apps
 with Ignite CLI, see the [Ignite CLI Developer
-Tutorials](https://docs.ignite.com/guide).
+Tutorials](https://tutorials.ignite.com).
 
 To install Ignite CLI locally on GNU, Linux, or macOS, see [Install Ignite
 CLI](https://docs.ignite.com/welcome/install).
@@ -80,12 +196,12 @@ version of Cosmos SDK that your blockchain is built with. Unless noted
 otherwise, a row refers to a minor version and all associated patch versions.
 
 | Ignite CLI  | Cosmos SDK  | IBC                  | Notes                                                         |
-|-------------|-------------|----------------------|---------------------------------------------------------------|
-| v28.x.x     | v0.50.x     | v8.0.0               | -                                                             |
+| ----------- | ----------- | -------------------- | ------------------------------------------------------------- |
+| v28.x.y     | v0.50.x     | v8.0.0               | -                                                             |
 | v0.27.1     | v0.47.3     | v7.1.0               | -                                                             |
 | v0.26.0     | v0.46.7     | v6.1.0               | -                                                             |
 | v0.25.2     | v0.46.6     | v5.1.0               | Bump Tendermint version to v0.34.24                           |
-| v0.25.1     | v0.46.3     | v5.0.0               | Includes  Dragonberry security fix                            |
+| v0.25.1     | v0.46.3     | v5.0.0               | Includes Dragonberry security fix                             |
 | ~~v0.24.0~~ | ~~v0.46.0~~ | ~~v5.0.0~~           | This version is deprecated due to a security fix in `v0.25.0` |
 | v0.23.0     | v0.45.5     | v3.0.1               |                                                               |
 | v0.21.1     | v0.45.4     | v2.0.3               | Supports Cosmos SDK v0.46.0-alpha1 and above                  |
@@ -98,65 +214,38 @@ otherwise, a row refers to a minor version and all associated patch versions.
 To upgrade your blockchain to the newer version of Cosmos SDK, see the
 [Migration guide](https://docs.ignite.com/migration).
 
-## Plugin system
+## Ignite Apps
 
-Ignite CLI commands can be extended using plugins. A plugin is a program that
-uses github.com/hashicorp/go-plugin to communicate with the ignite binary.
+Ignite Apps aims to extend the functionality of Ignite CLI, offering both official and community-contributed integrations. These integrations are designed to streamline development processes and offer valuable insights for blockchain app developers.
 
-#### Use a plugin
+### How to Install an Ignite App
 
-Plugins must be declared in the `config.yml` file, using the following syntax:
-
-```yaml
-plugins:
-  // path can be a repository or a local path
-  // the directory must contain go code under a main package.
-  // For repositories you can specify a suffix @branch or @tag to target a
-  // specific git reference.
-  - path: github.com/org/repo/my-plugin
-    // Additional parameters can be passed to the plugin
-    with:
-      key: value
+```bash
+ignite app install -g github.com/ignite/apps/[app-name]
 ```
 
-Once declared, the next time the ignite binary will be executed under this
-configuration, it will fetch, build and run the plugin. As a result, more
-commands should be available in the list of the ignite commands.
-
-`ignite plugin` command allows to list the plugins and their status, and to
+The `ignite app list` command allows to list the plugins and their status, and to
 update a plugin if you need to get the latest version.
 
-### Make a plugin
+### How to Create an App
 
-A plugin must implement `plugin.Interface`.
+Scaffold your Ignite app with one simple command:
 
-The easiest way to make a plugin is to use the `ignite plugin scaffold` command.
-For example:
-
-```
-$ cd /home/user/src
-$ ignite plugin scaffold github.com/foo/bar
+```bash
+ignite scaffold app path/to/your/app
 ```
 
-It will create a folder `bar` under `/home/user/src` and generate predefined
-`go.mod` and `main.go`. The code contains everything required to connect to the
-ignite binary via `hashicorp/go-plugin`. What need to be adapted is the
-implementation of the `plugin.Interface` (`Commands` and `Execute` methods).
+Afterwards, install using:
 
-To test your plugin, you only need to declare it under a chain config, for
-instance:
-
-```yaml
-plugins:
-  - path: /home/user/src/bar
+```bash
+ignite app install -g path/to/your/app
 ```
 
-Then run `ignite`, the plugin will compile and should be listed among the ignite
-commands. Each time `ignite` is executed, the plugin is recompiled if the files
-have changed since the last compilation. This allows fast and easy plugin
-development, you only care about code and `ignite` handles the compilation.
+For more information, refer to [Creating Ignite Apps](https://docs.ignite.com/apps/developing-apps).
 
-## Contributing
+Also check out the section of our [example Apps](https://github.com/ignite/apps/tree/main/examples).
+
+## Contributing to Ignite CLI
 
 We welcome contributions from everyone. The `main` branch contains the
 development version of the code. You can create a branch from `main` and
@@ -179,10 +268,10 @@ everyone who has contributed to Ignite CLI!
 Ignite CLI is a free and open source product maintained by
 [Ignite](https://ignite.com). Here's where you can find us. Stay in touch.
 
-* [ignite.com website](https://ignite.com)
-* [@ignite\_dev on Twitter](https://twitter.com/ignite_dev)
-* [ignite.com/blog](https://ignite.com/blog)
-* [Ignite Discord](https://discord.com/invite/ignite)
-* [Ignite YouTube](https://www.youtube.com/@ignitehq)
-* [Ignite docs](https://docs.ignite.com)
-* [Ignite jobs](https://ignite.com/careers)
+- [ignite.com website](https://ignite.com)
+- [@ignite on Twitter](https://twitter.com/ignite)
+- [ignite.com/blog](https://ignite.com/blog)
+- [Ignite Discord](https://discord.com/invite/ignite)
+- [Ignite YouTube](https://www.youtube.com/@ignitehq)
+- [Ignite docs](https://docs.ignite.com)
+- [Ignite jobs](https://ignite.com/careers)

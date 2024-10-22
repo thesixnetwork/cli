@@ -8,23 +8,24 @@ import (
 
 	"google.golang.org/grpc/status"
 
-	ignitecmd "github.com/ignite/cli/v28/ignite/cmd"
-	chainconfig "github.com/ignite/cli/v28/ignite/config/chain"
-	"github.com/ignite/cli/v28/ignite/internal/analytics"
-	"github.com/ignite/cli/v28/ignite/pkg/clictx"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/colors"
-	"github.com/ignite/cli/v28/ignite/pkg/cliui/icons"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/validation"
-	"github.com/ignite/cli/v28/ignite/pkg/xstrings"
+	ignitecmd "github.com/ignite/cli/v29/ignite/cmd"
+	chainconfig "github.com/ignite/cli/v29/ignite/config/chain"
+	"github.com/ignite/cli/v29/ignite/internal/analytics"
+	"github.com/ignite/cli/v29/ignite/pkg/clictx"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/colors"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui/icons"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/validation"
+	"github.com/ignite/cli/v29/ignite/pkg/xstrings"
 )
+
+const exitCodeOK, exitCodeError = 0, 1
 
 func main() {
 	os.Exit(run())
 }
 
 func run() int {
-	const exitCodeOK, exitCodeError = 0, 1
 	ctx := clictx.From(context.Background())
 	cmd, cleanUp, err := ignitecmd.New(ctx)
 	if err != nil {
@@ -41,6 +42,7 @@ func run() int {
 	}
 	var wg sync.WaitGroup
 	analytics.SendMetric(&wg, subCmd)
+	analytics.EnableSentry(ctx, &wg)
 
 	err = cmd.ExecuteContext(ctx)
 	if err != nil {
@@ -77,7 +79,8 @@ func run() int {
 		return exitCodeError
 	}
 
-	wg.Wait() // waits for all metrics to be sent
+	// waits for analytics to finish
+	wg.Wait()
 
 	return exitCodeOK
 }

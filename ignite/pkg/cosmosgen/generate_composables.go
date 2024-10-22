@@ -10,9 +10,9 @@ import (
 	"github.com/imdario/mergo"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosanalysis/module"
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
-	"github.com/ignite/cli/v28/ignite/pkg/gomodulepath"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosanalysis/module"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/gomodulepath"
 )
 
 type composablesGenerator struct {
@@ -118,8 +118,6 @@ func (g *composablesGenerator) generateComposableTemplates(p generatePayload) er
 	gg := &errgroup.Group{}
 
 	for _, m := range p.Modules {
-		m := m
-
 		gg.Go(func() error {
 			return g.generateComposableTemplate(m, p)
 		})

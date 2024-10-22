@@ -6,14 +6,17 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 
+    keepertest "<%= modulePath %>/testutil/keeper"
+    "<%= modulePath %>/x/<%= moduleName %>/keeper"
     "<%= modulePath %>/x/<%= moduleName %>/types"
 )
 
 func TestMsgUpdateParams(t *testing.T) {
-	k, ms, ctx := setupMsgServer(t)
+	k, ctx, _ := keepertest.<%= title(moduleName) %>Keeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
 	params := types.DefaultParams()
-	require.NoError(t, k.SetParams(ctx, params))
-	wctx := sdk.UnwrapSDKContext(ctx)
+	require.NoError(t, k.Params.Set(ctx, params))
 
 	// default params
 	testCases := []struct {
@@ -51,7 +54,7 @@ func TestMsgUpdateParams(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := ms.UpdateParams(wctx, tc.input)
+			_, err := ms.UpdateParams(ctx, tc.input)
 
 			if tc.expErr {
 				require.Error(t, err)

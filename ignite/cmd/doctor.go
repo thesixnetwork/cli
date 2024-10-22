@@ -3,8 +3,8 @@ package ignitecmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cliui"
-	"github.com/ignite/cli/v28/ignite/services/doctor"
+	"github.com/ignite/cli/v29/ignite/pkg/cliui"
+	"github.com/ignite/cli/v29/ignite/services/doctor"
 )
 
 func NewDoctor() *cobra.Command {
@@ -12,7 +12,7 @@ func NewDoctor() *cobra.Command {
 		Use:    "doctor",
 		Short:  "Fix chain configuration",
 		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			session := cliui.New()
 			defer session.End()
 

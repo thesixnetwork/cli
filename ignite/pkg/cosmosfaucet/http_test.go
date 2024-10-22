@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ignite/cli/v28/ignite/pkg/cosmosfaucet"
+	"github.com/ignite/cli/v29/ignite/pkg/cosmosfaucet"
 )
 
 func TestServeHTTPCORS(t *testing.T) {
@@ -38,7 +38,10 @@ func TestServeHTTPCORS(t *testing.T) {
 			f.ServeHTTP(res, req)
 
 			// Assert
-			require.Equal(t, http.StatusNoContent, res.Result().StatusCode)
+			result := res.Result()
+			defer result.Body.Close() // Ensure the response body is closed
+
+			require.Equal(t, http.StatusNoContent, result.StatusCode)
 		})
 	}
 }

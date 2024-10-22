@@ -8,14 +8,13 @@ import (
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cometbft/cometbft/types"
 
-	"github.com/ignite/cli/v28/ignite/pkg/errors"
+	"github.com/ignite/cli/v29/ignite/pkg/errors"
 )
 
 // rpcWrapper is a rpclient.Client but with more contextualized errors.
 // Useful because the original implementation may return JSON errors when the
 // requested node is busy, which is confusing for the user. With rpcWrapper,
 // the error is prefixed with 'error while requesting node xxx: JSON error'.
-// TODO(tb): we may remove this wrapper once https://github.com/tendermint/tendermint/issues/9312 is fixed.
 type rpcWrapper struct {
 	rpcclient.Client
 	nodeAddress string
