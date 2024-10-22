@@ -34,12 +34,14 @@ type Account struct {
 	Mnemonic string   `yaml:"mnemonic,omitempty"`
 	Address  string   `yaml:"address,omitempty"`
 	CoinType string   `yaml:"cointype,omitempty"`
+	Algo     string   `yaml:"algo,omitempty"`
 }
 
 // Build holds build configs.
 type Build struct {
 	Main    string   `yaml:"main,omitempty"`
 	Binary  string   `yaml:"binary,omitempty"`
+	Tags    []string `yaml:"tags" doc:"Build Tags"`
 	LDFlags []string `yaml:"ldflags,omitempty"`
 	Proto   Proto    `yaml:"proto"`
 }
