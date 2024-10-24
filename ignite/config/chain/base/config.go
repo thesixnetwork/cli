@@ -37,12 +37,14 @@ type Account struct {
 
 	// The RPCAddress off the chain that account is issued at.
 	RPCAddress string `yaml:"rpc_address,omitempty"`
+	Algo     string   `yaml:"algo,omitempty"`
 }
 
 // Build holds build configs.
 type Build struct {
 	Main    string   `yaml:"main,omitempty"`
 	Binary  string   `yaml:"binary,omitempty"`
+	Tags    []string `yaml:"tags" doc:"Build Tags"`
 	LDFlags []string `yaml:"ldflags,omitempty"`
 	Proto   Proto    `yaml:"proto"`
 }
