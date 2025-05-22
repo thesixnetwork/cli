@@ -66,7 +66,7 @@ var (
 		"upgrade":            {},
 		"vesting":            {},
 		"circuit":            {},
-		"nft":                {},
+		// "nft":                {},
 		"group":              {},
 		"consensus":          {},
 	}
@@ -91,7 +91,7 @@ var (
 		"params",
 		"upgrade",
 		"circuit",
-		"nft",
+		// "nft",
 		"group",
 		"consensus",
 	}
