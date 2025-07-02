@@ -63,12 +63,13 @@ func GenerateVuex(path string) GenerateTarget {
 	}
 }
 
-// GenerateVuexLegacy enables generating proto based Typescript Client and Vuex Stores with v0.24.0 behavior.
-// This version restores the original Vuex generation behavior from Ignite CLI v0.24.0.
+// GenerateVuexLegacy enables generating proto based Vuex Stores with v0.23.0 behavior.
+// This version restores the original JavaScript-based Vuex generation behavior from Ignite CLI v0.23.0.
+// Unlike the modern version, it does NOT generate a TypeScript client but instead relies on @starport packages.
 func GenerateVuexLegacy(path string) GenerateTarget {
 	return func(o *generateOptions) {
 		o.isOpenAPIEnabled = true
-		o.isTSClientEnabled = true
+		// Note: Do NOT enable TypeScript client for legacy - it used @starport packages instead
 		o.isVuexEnabled = true
 		o.isVuexLegacy = true // Flag to enable legacy behavior
 		o.vuexPath = path

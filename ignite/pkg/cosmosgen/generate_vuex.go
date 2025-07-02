@@ -274,8 +274,8 @@ func (g *vuexLegacyGenerator) generateVueTemplate(m module.Module, p generatePay
 		return err
 	}
 
-	// Use the same templates as regular Vuex for now - we can customize later
-	return templateTSClientVue.Write(outDir, "", struct {
+	// Use legacy JavaScript templates for v0.23.0 behavior
+	return templateTSClientVueLegacy.Write(outDir, "", struct {
 		Module    module.Module
 		PackageNS string
 	}{
@@ -290,6 +290,6 @@ func (g *vuexLegacyGenerator) generateRootTemplates(p generatePayload) error {
 		return err
 	}
 
-	// Use the same templates as regular Vuex for now - we can customize later
-	return templateTSClientVueRoot.Write(outDir, "", p)
+	// Use legacy JavaScript templates for v0.23.0 behavior
+	return templateTSClientVueRootLegacy.Write(outDir, "", p)
 }

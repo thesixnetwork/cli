@@ -20,6 +20,8 @@ var (
 	templateTSClientModule         = newTemplateWriter("module")
 	templateTSClientVue            = newTemplateWriter("vue")
 	templateTSClientVueRoot        = newTemplateWriter("vue-root")
+	templateTSClientVueLegacy      = newTemplateWriter("vue-legacy")
+	templateTSClientVueRootLegacy  = newTemplateWriter("vue-root-legacy")
 	templateTSClientComposable     = newTemplateWriter("composable")
 	templateTSClientComposableRoot = newTemplateWriter("composable-root")
 )
