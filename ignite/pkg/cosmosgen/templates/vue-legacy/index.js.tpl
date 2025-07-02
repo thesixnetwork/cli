@@ -97,7 +97,7 @@ export default {
     },
     
     {{ end }}
-    {{ range .Module.Messages }}async Msg{{ capitalCase .Name }}({ rootGetters }, { value }) {
+    {{ range $.Module.Msgs }}async Msg{{ capitalCase .Name }}({ rootGetters }, { value }) {
       try {
         const txClient = await txClient(rootGetters)
         const msg = await txClient.msg{{ capitalCase $.Module.Pkg.Name }}.{{ camelCase .Name }}({ value })
