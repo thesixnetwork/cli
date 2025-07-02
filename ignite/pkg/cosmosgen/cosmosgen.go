@@ -36,6 +36,8 @@ type generateOptions struct {
 	hooksRootPath string
 
 	specOut string
+
+	isVuexLegacy bool
 }
 
 // ModulePathFunc defines a function type that returns a path based on a Cosmos SDK module.
@@ -58,6 +60,14 @@ func WithVuexGeneration(out ModulePathFunc, vuexRootPath string) Option {
 	return func(o *generateOptions) {
 		o.vuexOut = out
 		o.vuexRootPath = vuexRootPath
+	}
+}
+
+func WithVuexLegacyGeneration(out ModulePathFunc, vuexRootPath string) Option {
+	return func(o *generateOptions) {
+		o.vuexOut = out
+		o.vuexRootPath = vuexRootPath
+		o.isVuexLegacy = true
 	}
 }
 
@@ -194,8 +204,14 @@ func Generate(ctx context.Context, cacheStorage cache.Storage, appPath, protoDir
 	}
 
 	if g.opts.vuexOut != nil {
-		if err := g.generateVuex(); err != nil {
-			return err
+		if g.opts.isVuexLegacy {
+			if err := g.generateVuexLegacy(); err != nil {
+				return err
+			}
+		} else {
+			if err := g.generateVuex(); err != nil {
+				return err
+			}
 		}
 
 		// Update Vuex store dependencies when Vuex stores are generated.

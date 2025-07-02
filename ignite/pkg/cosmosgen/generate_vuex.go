@@ -20,8 +20,16 @@ type vuexGenerator struct {
 	g *generator
 }
 
+type vuexLegacyGenerator struct {
+	g *generator
+}
+
 func newVuexGenerator(g *generator) *vuexGenerator {
 	return &vuexGenerator{g}
+}
+
+func newVuexLegacyGenerator(g *generator) *vuexLegacyGenerator {
+	return &vuexLegacyGenerator{g}
 }
 
 func (g *generator) updateVueDependencies() error {
@@ -180,6 +188,33 @@ func (g *generator) generateVuex() error {
 	return vsg.generateRootTemplates(data)
 }
 
+// generateVuexLegacy generates Vuex stores with v0.24.0 behavior
+func (g *generator) generateVuexLegacy() error {
+	chainPath, _, err := gomodulepath.Find(g.appPath)
+	if err != nil {
+		return err
+	}
+
+	appModulePath := gomodulepath.ExtractAppPath(chainPath.RawPath)
+	data := generatePayload{
+		Modules:   g.appModules,
+		PackageNS: strings.ReplaceAll(appModulePath, "/", "-"),
+	}
+
+	// In v0.24.0, only include first-party modules (no third-party modules)
+	// This was a key difference in the legacy version
+	// for _, modules := range g.thirdModules {
+	//     data.Modules = append(data.Modules, modules...)
+	// }
+
+	vsg := newVuexLegacyGenerator(g)
+	if err := vsg.generateVueTemplates(data); err != nil {
+		return err
+	}
+
+	return vsg.generateRootTemplates(data)
+}
+
 func (g *vuexGenerator) generateVueTemplates(p generatePayload) error {
 	gg := &errgroup.Group{}
 
@@ -215,5 +250,46 @@ func (g *vuexGenerator) generateRootTemplates(p generatePayload) error {
 		return err
 	}
 
+	return templateTSClientVueRoot.Write(outDir, "", p)
+}
+
+// Methods for vuexLegacyGenerator
+func (g *vuexLegacyGenerator) generateVueTemplates(p generatePayload) error {
+	gg := &errgroup.Group{}
+
+	for _, m := range p.Modules {
+		m := m
+
+		gg.Go(func() error {
+			return g.generateVueTemplate(m, p)
+		})
+	}
+
+	return gg.Wait()
+}
+
+func (g *vuexLegacyGenerator) generateVueTemplate(m module.Module, p generatePayload) error {
+	outDir := g.g.opts.vuexOut(m)
+	if err := os.MkdirAll(outDir, 0o766); err != nil {
+		return err
+	}
+
+	// Use the same templates as regular Vuex for now - we can customize later
+	return templateTSClientVue.Write(outDir, "", struct {
+		Module    module.Module
+		PackageNS string
+	}{
+		Module:    m,
+		PackageNS: p.PackageNS,
+	})
+}
+
+func (g *vuexLegacyGenerator) generateRootTemplates(p generatePayload) error {
+	outDir := g.g.opts.vuexRootPath
+	if err := os.MkdirAll(outDir, 0o766); err != nil {
+		return err
+	}
+
+	// Use the same templates as regular Vuex for now - we can customize later
 	return templateTSClientVueRoot.Write(outDir, "", p)
 }

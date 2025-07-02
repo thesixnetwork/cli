@@ -23,6 +23,7 @@ type generateOptions struct {
 	isComposablesEnabled bool
 	isHooksEnabled       bool
 	isVuexEnabled        bool
+	isVuexLegacy         bool
 	isOpenAPIEnabled     bool
 	tsClientPath         string
 	vuexPath             string
@@ -58,6 +59,18 @@ func GenerateVuex(path string) GenerateTarget {
 		o.isOpenAPIEnabled = true
 		o.isTSClientEnabled = true
 		o.isVuexEnabled = true
+		o.vuexPath = path
+	}
+}
+
+// GenerateVuexLegacy enables generating proto based Typescript Client and Vuex Stores with v0.24.0 behavior.
+// This version restores the original Vuex generation behavior from Ignite CLI v0.24.0.
+func GenerateVuexLegacy(path string) GenerateTarget {
+	return func(o *generateOptions) {
+		o.isOpenAPIEnabled = true
+		o.isTSClientEnabled = true
+		o.isVuexEnabled = true
+		o.isVuexLegacy = true // Flag to enable legacy behavior
 		o.vuexPath = path
 	}
 }
@@ -235,12 +248,21 @@ func (c *Chain) Generate(
 		}
 
 		vuexPath = c.joinGeneratedPath(vuexPath)
-		options = append(options,
-			cosmosgen.WithVuexGeneration(
-				cosmosgen.TypescriptModulePath(vuexPath),
-				vuexPath,
-			),
-		)
+		if targetOptions.isVuexLegacy {
+			options = append(options,
+				cosmosgen.WithVuexLegacyGeneration(
+					cosmosgen.TypescriptModulePath(vuexPath),
+					vuexPath,
+				),
+			)
+		} else {
+			options = append(options,
+				cosmosgen.WithVuexGeneration(
+					cosmosgen.TypescriptModulePath(vuexPath),
+					vuexPath,
+				),
+			)
+		}
 	}
 
 	if targetOptions.isComposablesEnabled {
