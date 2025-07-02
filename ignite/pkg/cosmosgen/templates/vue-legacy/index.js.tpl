@@ -82,7 +82,7 @@ export default {
       try {
         const key = params ?? {}
         const queryClient = await queryClient(rootGetters)
-        let value = (await queryClient.query{{ capitalCase .Module.Pkg.Name }}.{{ camelCase .Name }}(key)).data
+        let value = (await queryClient.query{{ capitalCase $.Module.Pkg.Name }}.{{ camelCase .Name }}(key)).data
         
         commit('QUERY', { query: '{{ .Name }}', key: { params: { ...key }, query }, value })
         
@@ -100,7 +100,7 @@ export default {
     {{ range .Module.Messages }}async Msg{{ capitalCase .Name }}({ rootGetters }, { value }) {
       try {
         const txClient = await txClient(rootGetters)
-        const msg = await txClient.msg{{ capitalCase .Module.Pkg.Name }}.{{ camelCase .Name }}({ value })
+        const msg = await txClient.msg{{ capitalCase $.Module.Pkg.Name }}.{{ camelCase .Name }}({ value })
         return await txClient.signAndBroadcast([msg], { fee: { amount: [], gas: "200000" }, memo: "" })
       } catch (e) {
         if (e == MissingWalletError) {

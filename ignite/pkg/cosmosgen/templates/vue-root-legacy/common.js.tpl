@@ -1,39 +1,30 @@
-// Legacy common helpers (v0.23.0 style)
-import { Client } from '@starport/vuex'
+// Legacy common utilities for {{ .PackageNS }}
+import { Client, registry } from '@starport/vue'
 
-export { MissingWalletError } from '@starport/vuex'
+export { registry, MissingWalletError } from '@starport/vue'
 
-let _client
-let _txClient  
-let _queryClient
+let _client = null
 
-export function getClient() {
+export async function txClient(rootGetters) {
   if (!_client) {
-    _client = new Client()
+    const { address } = rootGetters['common/wallet']
+    const client = new Client(rootGetters['common/env'], rootGetters['common/wallet'])
+    await client.connectSigner(address)
+    _client = client
   }
   return _client
 }
 
-export async function txClient(rootGetters) {
-  if (!_txClient) {
-    const client = getClient()
-    const signer = rootGetters['common/wallet/signer']
-    const env = rootGetters['common/env/getEnv']
-    
-    _txClient = await client.initTxClient(signer, env)
-  }
-  return _txClient
-}
-
 export async function queryClient(rootGetters) {
-  if (!_queryClient) {
-    const client = getClient()
-    const env = rootGetters['common/env/getEnv']
-    
-    _queryClient = await client.initQueryClient(env)
+  if (!_client) {
+    const client = new Client(rootGetters['common/env'])
+    await client.initStargateClient()
+    _client = client
   }
-  return _queryClient
+  return _client
 }
 
-// Legacy registry export
-export const registry = []
+// Reset client connection
+export function resetClient() {
+  _client = null
+}

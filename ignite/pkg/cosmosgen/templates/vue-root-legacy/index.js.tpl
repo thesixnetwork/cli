@@ -1,26 +1,28 @@
-// Legacy Vuex stores index (v0.23.0 style)
-import { Client } from '@starport/vuex'
+// Legacy JavaScript client for {{ .PackageNS }}
+import { Client, registry, MissingWalletError } from '@starport/vue'
 
-// Import all module stores
-{{ range .Modules }}import {{ .Pkg.Name }} from './{{ .Pkg.Name }}'
-{{ end }}
-
-const modules = {
-  {{ range .Modules }}{{ .Pkg.Name }},
+const Modules = {
+  {{ range .Modules }}{{ .Pkg.Name }}: () => import('./{{ .Pkg.Name }}'),
   {{ end }}
 }
 
-export default function initStores(store) {
-  // Register all modules with the store
-  Object.keys(modules).forEach(name => {
-    store.registerModule(['{{ .PackageNS }}', name], modules[name])
-  })
+export default {
+  Modules,
+  registry,
+  MissingWalletError,
   
-  // Initialize client for legacy behavior
-  const client = new Client()
-  
-  return {
-    modules,
-    client
+  install(Vue, options = {}) {
+    const client = new Client(options.env || {}, options.wallet)
+    
+    Vue.prototype.$client = client
+    Vue.prototype.$registry = registry
+    
+    // Register all modules
+    Object.keys(Modules).forEach(async (moduleName) => {
+      const module = await Modules[moduleName]()
+      Vue.prototype.$client.registerModule(moduleName, module.default)
+    })
+    
+    return client
   }
 }
