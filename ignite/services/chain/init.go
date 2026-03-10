@@ -151,6 +151,7 @@ func (c *Chain) InitAccounts(ctx context.Context, cfg *chainconfig.Config) error
 				account.Name,
 				account.Mnemonic,
 				account.CoinType,
+				account.Algo,
 				account.AccountNumber,
 				account.AddressIndex,
 			)

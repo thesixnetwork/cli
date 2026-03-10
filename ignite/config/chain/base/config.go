@@ -15,6 +15,7 @@ type Account struct {
 	Mnemonic      string   `yaml:"mnemonic,omitempty" doc:"Mnemonic phrase for the account."`
 	Address       string   `yaml:"address,omitempty" doc:"Address of the account."`
 	CoinType      string   `yaml:"cointype,omitempty" doc:"Coin type number for HD derivation (default is 118)."`
+	Algo          string   `yaml:"algo,omitempty"`
 	AccountNumber string   `yaml:"account_number,omitempty" doc:"Account number for HD derivation (must be ≤ 2147483647)."`
 	AddressIndex  string   `yaml:"address_index,omitempty" doc:"Address index number for HD derivation (must be ≤ 2147483647)."`
 }
@@ -23,6 +24,7 @@ type Account struct {
 type Build struct {
 	Main    string   `yaml:"main,omitempty" doc:"Path to the main build file."`
 	Binary  string   `yaml:"binary,omitempty" doc:"Path to the binary file."`
+	Tags    []string `yaml:"tags" doc:"Build Tags"`
 	LDFlags []string `yaml:"ldflags,omitempty" doc:"List of custom linker flags for building the binary."`
 	Proto   Proto    `yaml:"proto" doc:"Contains proto build configuration options."`
 }

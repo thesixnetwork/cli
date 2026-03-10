@@ -31,7 +31,7 @@ func TestAddKeyCommandAddsOptionalFieldsAndKeyringBackend(t *testing.T) {
 		WithHome("/tmp/simd"),
 	)
 
-	s := step.New(cmd.AddKeyCommand("alice", "118", "3", "1"))
+	s := step.New(cmd.AddKeyCommand("alice", "118", "secp256k1","3", "1"))
 
 	require.Equal(t, "simd", s.Exec.Command)
 	require.Equal(t, []string{
@@ -55,7 +55,7 @@ func TestAddKeyCommandAddsOptionalFieldsAndKeyringBackend(t *testing.T) {
 
 func TestAddKeyCommandSkipsEmptyOptionalFields(t *testing.T) {
 	cmd := New("simd")
-	s := step.New(cmd.AddKeyCommand("alice", "", "", ""))
+	s := step.New(cmd.AddKeyCommand("alice", "secp256k1","", "", ""))
 
 	require.Equal(t, "simd", s.Exec.Command)
 	require.Equal(t, []string{

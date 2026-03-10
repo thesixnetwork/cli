@@ -36,6 +36,7 @@ func (r Runner) AddAccount(
 	name,
 	mnemonic,
 	coinType,
+	algo,
 	accountNumber,
 	addressIndex string,
 ) (Account, error) {
@@ -73,7 +74,7 @@ func (r Runner) AddAccount(
 		if err := r.run(
 			ctx,
 			runOptions{},
-			r.chainCmd.RecoverKeyCommand(name, coinType, accountNumber, addressIndex),
+			r.chainCmd.RecoverKeyCommand(name, coinType, algo, accountNumber, addressIndex),
 			step.Write(input.Bytes()),
 		); err != nil {
 			return Account{}, err
@@ -83,7 +84,7 @@ func (r Runner) AddAccount(
 			stdout: b,
 			stderr: b,
 			stdin:  os.Stdin,
-		}, r.chainCmd.AddKeyCommand(name, coinType, accountNumber, addressIndex)); err != nil {
+		}, r.chainCmd.AddKeyCommand(name, coinType, algo, accountNumber, addressIndex)); err != nil {
 			return Account{}, err
 		}
 
